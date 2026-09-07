@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\\\Users\\\\ileac\\\\Downloads\\\\PortfolioSiteFigma\")",
+      "Bash(Get-ChildItem -Recurse -Force)",
+      "Bash(Select-Object FullName)",
+      "Bash(pnpm dev *)",
+      "Bash(cd /tmp/tmp.xFhUPQsGGU/zentropi-skills && echo \"--- marketplace.json ---\" && cat .claude-plugin/marketplace.json && echo \"--- plugin.json ---\" && cat .claude-plugin/plugin.json && echo \"--- SKILL.md ---\" && cat skills/zentropi-labeler/SKILL.md && echo \"--- README ---\" && cat README.md)",
+      "Bash(claude --version)",
+      "Bash(claude plugin *)",
+      "Bash(cat \"/c/Users/ileac/.claude/plugins/known_marketplaces.json\" 2>&1)",
+      "Bash(npm view *)",
+      "Bash(npx --yes skills add https://github.com/zentropi-ai/skills)",
+      "mcp__Figma__get_design_context",
+      "mcp__Figma__get_metadata",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

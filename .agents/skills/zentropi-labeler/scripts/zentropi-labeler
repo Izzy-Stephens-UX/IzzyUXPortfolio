@@ -1,0 +1,1315 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.8"
+# dependencies = ["httpx>=0.24"]
+# ///
+"""zentropi-labeler — command-line client for the Zentropi labeling platform.
+
+Authentication
+--------------
+All commands authenticate with a `zt_` API key. The key is resolved in this
+order:
+
+    1. --api-key on the command line
+    2. ZENTROPI_API_KEY environment variable
+    3. the config file written by `zentropi-labeler login` (~/.config/zentropi/config.json)
+
+Endpoints (build vs. run)
+-------------------------
+Zentropi splits along a build-vs-run line, and so does this CLI:
+
+    * BUILD — create / test / benchmark labelers -> the /v1 API
+      (default https://zentropi.ai). Override with ZENTROPI_BUILD_API_BASE.
+    * RUN   — run a labeler on live data -> the run-time inference API
+      (default https://api.zentropi.ai). Override with ZENTROPI_RUN_API_BASE.
+
+`benchmark` (against a labeler's stored dataset) and `check` (a one-off spot
+check against ad-hoc content you supply) are both build/test operations, so they
+use the /v1 API. `run` executes a labeler against content you supply as a *run*
+operation, so it uses the inference API.
+
+For high-volume labeling on live traffic, always use `run` to access the inference API.
+By contrast, the `benchmark` and `check` functions are just for testing labelers during development.
+
+The /v1 host 301-redirects app./www. hosts to the naked domain, so requests
+follow redirects automatically.
+
+"""
+
+import argparse
+import base64
+import concurrent.futures
+import csv
+import getpass
+import json
+import mimetypes
+import os
+import sys
+import time
+
+import httpx
+
+__version__ = "0.11.1"
+
+DEFAULT_BUILD_API_BASE = "https://zentropi.ai"
+DEFAULT_RUN_API_BASE = "https://api.zentropi.ai"
+
+CONFIG_DIR = os.path.join(
+    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+    "zentropi",
+)
+CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
+
+
+# ----------------------------------------------------------------------------
+# Config / key resolution
+# ----------------------------------------------------------------------------
+
+def load_config():
+    try:
+        with open(CONFIG_PATH, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_config(cfg):
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(cfg, f, indent=2)
+    try:
+        os.chmod(CONFIG_PATH, 0o600)
+    except OSError:
+        pass
+
+
+def resolve_api_key(args):
+    if getattr(args, "api_key", None):
+        return args.api_key
+    if os.environ.get("ZENTROPI_API_KEY"):
+        return os.environ["ZENTROPI_API_KEY"]
+    return load_config().get("api_key")
+
+
+def build_api_base():
+    return os.environ.get("ZENTROPI_BUILD_API_BASE", DEFAULT_BUILD_API_BASE).rstrip("/")
+
+
+def run_api_base():
+    return os.environ.get("ZENTROPI_RUN_API_BASE", DEFAULT_RUN_API_BASE).rstrip("/")
+
+
+# ----------------------------------------------------------------------------
+# Output helpers
+# ----------------------------------------------------------------------------
+
+_NON_JSON = object()
+
+
+def die(msg, code=1):
+    print(f"error: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def require_key(args):
+    key = resolve_api_key(args)
+    if not key:
+        die(
+            "no API key found. Run 'zentropi-labeler login zt_...' or set ZENTROPI_API_KEY.",
+            code=2,
+        )
+    return key
+
+
+def auth_headers(key):
+    return {"Authorization": f"Bearer {key}"}
+
+
+def _loads_lenient(text):
+    """Parse JSON, tolerating raw (unescaped) control characters that some
+    streaming/partial build payloads emit mid-job (e.g. intermediate optimize
+    status). ``strict=False`` allows control chars inside strings; we always
+    re-serialize via ``json.dumps`` downstream, so our own ``--json`` output
+    stays strictly valid at every poll. Returns ``_NON_JSON`` when the body is
+    not JSON at all.
+    """
+    try:
+        return json.loads(text, strict=False)
+    except Exception:
+        return _NON_JSON
+
+
+def parse_or_die(resp):
+    """Return the JSON body of a response, dying on any error status.
+
+    Returns the special sentinel ``_NON_JSON`` when the (successful) body is not
+    JSON so callers can decide how to handle plain-text responses.
+    """
+    if resp.status_code == 401:
+        body = _loads_lenient(resp.text)
+        detail = body.get("detail", resp.text) if isinstance(body, dict) else resp.text
+        die(f"authentication failed (401): {detail}", code=3)
+
+    if resp.status_code >= 400:
+        body = _loads_lenient(resp.text)
+        detail = body.get("detail", resp.text) if isinstance(body, dict) else resp.text
+        die(f"request failed ({resp.status_code}): {detail}", code=1)
+
+    return _loads_lenient(resp.text)
+
+
+def emit(data, as_json):
+    """Print parsed data as JSON or a human-friendly summary."""
+    if as_json:
+        print(json.dumps(data, indent=2))
+    else:
+        print(format_human(data))
+
+
+def handle_response(resp, as_json):
+    """Print a response, handling errors (especially 401) gracefully."""
+    data = parse_or_die(resp)
+    if data is _NON_JSON:
+        print(resp.text)
+        return
+    emit(data, as_json)
+
+
+def format_human(data):
+    if isinstance(data, list):
+        if not data:
+            return "(empty)"
+        lines = []
+        for item in data:
+            lines.append(_summarize(item))
+        return "\n".join(lines)
+    return _summarize(data)
+
+
+def _summarize(item):
+    if not isinstance(item, dict):
+        return str(item)
+    # Prefer a compact id/name summary when present, else pretty JSON.
+    if "id" in item and ("name" in item or "email" in item):
+        label = item.get("name") or item.get("email") or ""
+        return f"{item['id']}  {label}".rstrip()
+    return json.dumps(item)
+
+
+# ----------------------------------------------------------------------------
+# HTTP
+# ----------------------------------------------------------------------------
+
+def client():
+    return httpx.Client(follow_redirects=True, timeout=httpx.Timeout(120.0))
+
+
+def request(method, path, key, *, json_body=None, params=None):
+    url = f"{build_api_base()}{path}"
+    with client() as c:
+        return c.request(
+            method, url, headers=auth_headers(key), json=json_body, params=params
+        )
+
+
+# ----------------------------------------------------------------------------
+# Commands
+# ----------------------------------------------------------------------------
+
+def cmd_login(args):
+    key = args.key
+    if args.key is not None:
+        # Passing the key as an argument is convenient for scripts but leaks it
+        # into shell history and process listings. Nudge toward safer options.
+        print(
+            "warning: passing the key on the command line exposes it in your "
+            "shell history. Prefer 'zentropi-labeler login' (interactive) or the "
+            "ZENTROPI_API_KEY environment variable.",
+            file=sys.stderr,
+        )
+    else:
+        try:
+            key = getpass.getpass("Enter API key (zt_...): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            die("login cancelled.")
+    if not key:
+        die("no API key provided.")
+    if not key.startswith("zt_"):
+        die("API keys start with 'zt_'.")
+    cfg = load_config()
+    cfg["api_key"] = key
+    save_config(cfg)
+    print(f"Saved API key to {CONFIG_PATH}")
+
+
+def cmd_logout(args):
+    cfg = load_config()
+    if "api_key" in cfg:
+        del cfg["api_key"]
+        save_config(cfg)
+    print("Logged out.")
+
+
+def cmd_account(args):
+    key = require_key(args)
+    handle_response(request("GET", "/v1/account", key), args.json)
+
+
+def cmd_labelers_list(args):
+    key = require_key(args)
+    handle_response(
+        request("GET", "/v1/labelers", key, params={"skip": args.skip, "limit": args.limit}),
+        args.json,
+    )
+
+
+def cmd_labelers_get(args):
+    key = require_key(args)
+    handle_response(request("GET", f"/v1/labelers/{args.id}", key), args.json)
+
+
+def cmd_labelers_create(args):
+    key = require_key(args)
+    body = {}
+    if args.name is not None:
+        body["name"] = args.name
+    if args.description is not None:
+        body["description"] = args.description
+    if args.criteria is not None:
+        body["criteria_text_draft"] = args.criteria
+    if args.visibility is not None:
+        body["visibility"] = args.visibility
+    handle_response(request("POST", "/v1/labelers", key, json_body=body), args.json)
+
+
+def cmd_labelers_update(args):
+    key = require_key(args)
+    body = {}
+    if args.name is not None:
+        body["name"] = args.name
+    if args.description is not None:
+        body["description"] = args.description
+    if args.criteria is not None:
+        body["criteria_text_draft"] = args.criteria
+    if args.visibility is not None:
+        body["visibility"] = args.visibility
+    handle_response(request("PUT", f"/v1/labelers/{args.id}", key, json_body=body), args.json)
+
+
+def cmd_labelers_delete(args):
+    key = require_key(args)
+    handle_response(request("DELETE", f"/v1/labelers/{args.id}", key), args.json)
+
+
+def cmd_versions_list(args):
+    key = require_key(args)
+    handle_response(request("GET", f"/v1/labelers/{args.labeler_id}/versions", key), args.json)
+
+
+def cmd_versions_get(args):
+    key = require_key(args)
+    handle_response(
+        request("GET", f"/v1/labelers/{args.labeler_id}/versions/{args.version_id}", key),
+        args.json,
+    )
+
+
+def cmd_versions_create(args):
+    """Snapshot criteria as a new version (does not deploy).
+
+    With --criteria, snapshots the given text. Without it, snapshots the
+    labeler's current draft.
+    """
+    key = require_key(args)
+    criteria = args.criteria
+    if criteria is None:
+        labeler = parse_or_die(request("GET", f"/v1/labelers/{args.labeler_id}", key))
+        criteria = (labeler or {}).get("criteria_text_draft") or ""
+        if not criteria.strip():
+            die(
+                "this labeler has no draft criteria to snapshot. Set it with "
+                "'zentropi-labeler update <id> --criteria \"...\"' first, "
+                "or pass --criteria."
+            )
+    body = {"criteria_text": criteria}
+    if args.version_name is not None:
+        body["name"] = args.version_name
+    if args.description is not None:
+        body["description"] = args.description
+    handle_response(
+        request("POST", f"/v1/labelers/{args.labeler_id}/versions", key, json_body=body),
+        args.json,
+    )
+
+
+def cmd_deploy(args):
+    """Make a single version live: the current draft (default) or a given version.
+
+    Deploying snapshots the draft into a new version when no --version is given.
+    `run --version latest` always serves the newest version deployed.
+    """
+    key = require_key(args)
+    labeler_id = args.labeler_id
+
+    if args.version:
+        target = parse_or_die(request(
+            "PUT", f"/v1/labelers/{labeler_id}/versions/{args.version}", key,
+            json_body={"is_deployed": True},
+        ))
+    else:
+        labeler = parse_or_die(request("GET", f"/v1/labelers/{labeler_id}", key))
+        draft = (labeler or {}).get("criteria_text_draft") or ""
+        if not draft.strip():
+            die(
+                "this labeler has no draft criteria to deploy. Set it with "
+                "'zentropi-labeler update <id> --criteria \"...\"' first, or "
+                "deploy an existing version with --version <id>."
+            )
+        target = parse_or_die(request(
+            "POST", f"/v1/labelers/{labeler_id}/versions", key,
+            json_body={"criteria_text": draft, "is_deployed": True},
+        ))
+
+    emit(target, args.json)
+
+
+def cmd_undeploy(args):
+    """Take a labeler offline: undeploy the live version (default) or a given one.
+
+    With no --version, every deployed version is undeployed. After this,
+    `run` returns an error until something is deployed again.
+    """
+    key = require_key(args)
+    labeler_id = args.labeler_id
+
+    if args.version:
+        target = parse_or_die(request(
+            "PUT", f"/v1/labelers/{labeler_id}/versions/{args.version}", key,
+            json_body={"is_deployed": False},
+        ))
+        emit(target, args.json)
+        return
+
+    versions = parse_or_die(request("GET", f"/v1/labelers/{labeler_id}/versions", key))
+    changed = []
+    for v in versions or []:
+        if v.get("is_deployed"):
+            changed.append(parse_or_die(request(
+                "PUT", f"/v1/labelers/{labeler_id}/versions/{v['id']}", key,
+                json_body={"is_deployed": False},
+            )))
+    if not changed:
+        emit({"message": "No deployed version; nothing to undeploy."}, args.json)
+    else:
+        emit(changed, args.json)
+
+
+def cmd_versions_delete(args):
+    key = require_key(args)
+    handle_response(
+        request("DELETE", f"/v1/labelers/{args.labeler_id}/versions/{args.version_id}", key),
+        args.json,
+    )
+
+
+def _load_samples(args):
+    if args.file:
+        with open(args.file, "r") as f:
+            data = json.load(f)
+        if not isinstance(data, list):
+            die("--file must contain a JSON array of test samples.")
+        return data
+    if args.text is not None:
+        return [{"content_text": args.text, "expected_label": args.label}]
+    die("provide either --file or --text/--label.")
+
+
+def cmd_tests_list(args):
+    key = require_key(args)
+    handle_response(request("GET", f"/v1/labelers/{args.labeler_id}/tests", key), args.json)
+
+
+def cmd_tests_get(args):
+    key = require_key(args)
+    handle_response(
+        request("GET", f"/v1/labelers/{args.labeler_id}/tests/{args.test_id}", key), args.json
+    )
+
+
+def cmd_tests_create(args):
+    key = require_key(args)
+    samples = _load_samples(args)
+    handle_response(
+        request("POST", f"/v1/labelers/{args.labeler_id}/tests", key, json_body=samples),
+        args.json,
+    )
+
+
+# Samples are uploaded in batches so a large dataset (with base64-embedded media)
+# never rides in one giant request body.
+CSV_IMPORT_BATCH = 10
+
+# `run --batch` fans out to the single-shot /v1/label endpoint in parallel.
+RUN_BATCH_DEFAULT_CONCURRENCY = 2
+RUN_BATCH_MAX_CONCURRENCY = 8
+RUN_BATCH_MAX_RETRIES = 5
+
+
+def _media_to_data_url(ref, kind):
+    """Turn a media reference into a base64 data URL the API can store.
+
+    `ref` may be an http(s) URL (downloaded) or a local file path (read from
+    disk); an existing `data:` URL is passed through untouched. `kind` is
+    'image' or 'video' and only supplies a fallback MIME type. Raises
+    ValueError with a readable message on any failure.
+    """
+    if ref.startswith("data:"):
+        return ref
+    fallback = "image/jpeg" if kind == "image" else "video/mp4"
+    if ref.startswith("http://") or ref.startswith("https://"):
+        try:
+            with client() as c:
+                resp = c.get(ref)
+        except httpx.RequestError as e:
+            raise ValueError(f"could not download {ref}: {e}")
+        if resp.status_code >= 400:
+            raise ValueError(f"could not download {ref} (HTTP {resp.status_code})")
+        data = resp.content
+        mime = resp.headers.get("content-type", "").split(";")[0].strip()
+        if not mime or not (mime.startswith("image/") or mime.startswith("video/")):
+            mime = mimetypes.guess_type(ref)[0] or fallback
+    else:
+        path = os.path.expanduser(ref)
+        if not os.path.isfile(path):
+            raise ValueError(f"file not found: {ref}")
+        try:
+            with open(path, "rb") as f:
+                data = f.read()
+        except OSError as e:
+            raise ValueError(f"could not read {ref}: {e}")
+        mime = mimetypes.guess_type(path)[0] or fallback
+    b64 = base64.b64encode(data).decode("ascii")
+    return f"data:{mime};base64,{b64}"
+
+
+def _encode_csv_row(w, n, total, as_json, skipped):
+    """Build one test-sample payload from a validated CSV row.
+
+    Downloads/encodes any media into data URLs. On a media failure the row is
+    kept as text-only when it has `content_text`, otherwise it is skipped (its
+    row number is appended to `skipped`) and None is returned. `n`/`total` drive
+    the progress line.
+    """
+    sample = {"expected_label": w["label"]}
+    if w["text"]:
+        sample["content_text"] = w["text"]
+    if w["sid"]:
+        sample["sample_id"] = w["sid"]
+    try:
+        if w["img"]:
+            if not as_json:
+                print(
+                    f"[{n}/{total}] row {w['row']}: downloading image…",
+                    file=sys.stderr,
+                )
+            sample["content_image"] = _media_to_data_url(w["img"], "image")
+        if w["vid"]:
+            if not as_json:
+                print(
+                    f"[{n}/{total}] row {w['row']}: downloading video…",
+                    file=sys.stderr,
+                )
+            sample["content_video"] = _media_to_data_url(w["vid"], "video")
+    except ValueError as e:
+        if "content_text" in sample:
+            print(f"warning: row {w['row']}: {e} — keeping text only.", file=sys.stderr)
+            sample.pop("content_image", None)
+            sample.pop("content_video", None)
+        else:
+            print(f"warning: row {w['row']}: {e} — skipping row.", file=sys.stderr)
+            skipped.append(w["row"])
+            return None
+    return sample
+
+
+def cmd_tests_import(args):
+    """Bulk-import test samples from a CSV, mirroring the web upload.
+
+    Recognized columns: content_text, content_image_url, content_video_url,
+    expected_label, sample_id. Media columns accept http(s) URLs or local file
+    paths; each is downloaded/read and embedded as a data URL, then posted to
+    the existing /v1 tests endpoint (which applies the same gating and storage).
+    """
+    key = require_key(args)
+    path = args.csv
+    if not os.path.isfile(path):
+        die(f"CSV file not found: {path}")
+    try:
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            fieldnames = reader.fieldnames or []
+            rows = list(reader)
+    except UnicodeDecodeError:
+        die("CSV must be UTF-8 encoded.")
+    except OSError as e:
+        die(f"could not read CSV: {e}")
+
+    has_text = "content_text" in fieldnames
+    has_image = "content_image_url" in fieldnames
+    has_video = "content_video_url" in fieldnames
+    if not (has_text or has_image or has_video):
+        die(
+            "CSV must have at least one of: content_text, content_image_url, "
+            "content_video_url."
+        )
+    if "expected_label" not in fieldnames:
+        die("CSV must have an 'expected_label' column.")
+
+    # Validate structure first (cheap) before downloading anything.
+    work = []
+    for i, row in enumerate(rows, start=2):  # row 1 is the header
+        text = (row.get("content_text") or "").strip() if has_text else ""
+        img = (row.get("content_image_url") or "").strip() if has_image else ""
+        vid = (row.get("content_video_url") or "").strip() if has_video else ""
+        label = (row.get("expected_label") or "").strip()
+        sid = (row.get("sample_id") or "").strip()
+        if not text and not img and not vid:
+            continue  # skip blank rows silently
+        if label not in ("0", "1"):
+            die(f"row {i}: expected_label must be '0' or '1' (got {label!r}).")
+        work.append(
+            {"row": i, "text": text, "img": img, "vid": vid, "label": label, "sid": sid}
+        )
+
+    if not work:
+        die("no usable rows found in CSV.")
+
+    if args.dry_run:
+        n_img = sum(1 for w in work if w["img"])
+        n_vid = sum(1 for w in work if w["vid"])
+        print(
+            f"dry run: {len(work)} sample(s) to import "
+            f"({n_img} with images, {n_vid} with videos). No data uploaded."
+        )
+        return
+
+    # Encode + upload one batch at a time so we never hold the whole dataset's
+    # base64 media in memory — only the current batch is materialized.
+    created = 0
+    all_created = []
+    skipped = []
+    total = len(work)
+    for start in range(0, total, CSV_IMPORT_BATCH):
+        chunk = work[start : start + CSV_IMPORT_BATCH]
+        batch = []
+        for offset, w in enumerate(chunk):
+            sample = _encode_csv_row(w, start + offset + 1, total, args.json, skipped)
+            if sample is not None:
+                batch.append(sample)
+        if not batch:
+            continue
+        try:
+            resp = request(
+                "POST", f"/v1/labelers/{args.labeler_id}/tests", key, json_body=batch
+            )
+        except httpx.RequestError as e:
+            die(
+                f"network error during upload at sample {start + 1}: {e} "
+                f"({created} created before the failure)"
+            )
+        if resp.status_code >= 400:
+            body = _loads_lenient(resp.text)
+            detail = body.get("detail", resp.text) if isinstance(body, dict) else resp.text
+            if resp.status_code in (401, 402, 403):
+                die(
+                    f"upload stopped ({resp.status_code}): {detail} "
+                    f"({created} created so far)",
+                    code=3 if resp.status_code == 401 else 1,
+                )
+            die(
+                f"upload failed at sample {start + 1} ({resp.status_code}): {detail} "
+                f"({created} created before the failure)"
+            )
+        data = _loads_lenient(resp.text)
+        if isinstance(data, list):
+            created += len(data)
+            all_created.extend(data)
+        if not args.json:
+            print(f"uploaded {created}…", file=sys.stderr)
+
+    if created == 0 and not all_created:
+        die("no samples were imported (all rows were skipped).")
+
+    if args.json:
+        print(json.dumps(all_created, indent=2))
+    else:
+        msg = f"Imported {created} test sample(s)."
+        if skipped:
+            msg += (
+                f" Skipped {len(skipped)} row(s): "
+                f"{', '.join(str(r) for r in skipped)}."
+            )
+        print(msg)
+
+
+def cmd_tests_delete(args):
+    key = require_key(args)
+    handle_response(
+        request("DELETE", f"/v1/labelers/{args.labeler_id}/tests/{args.test_id}", key),
+        args.json,
+    )
+
+
+def cmd_tests_delete_all(args):
+    key = require_key(args)
+    handle_response(request("DELETE", f"/v1/labelers/{args.labeler_id}/tests", key), args.json)
+
+
+def cmd_benchmark(args):
+    key = require_key(args)
+    url = f"{build_api_base()}/v1/labelers/{args.labeler_id}/benchmark"
+    params = {}
+    if args.version is not None:
+        params["version_id"] = args.version
+    results = []
+    try:
+        with client() as c:
+            with c.stream("POST", url, headers=auth_headers(key), params=params) as resp:
+                if resp.status_code == 401:
+                    die("authentication failed (401). Check your API key.", code=3)
+                if resp.status_code >= 400:
+                    body = resp.read().decode("utf-8", "replace")
+                    die(f"benchmark failed ({resp.status_code}): {body}")
+                for line in resp.iter_lines():
+                    if not line or not line.startswith("data: "):
+                        continue
+                    payload = line[len("data: "):]
+                    try:
+                        obj = json.loads(payload, strict=False)
+                    except json.JSONDecodeError:
+                        continue
+                    results.append(obj)
+                    if not args.json:
+                        line = _summarize_result(obj)
+                        if line:
+                            print(line)
+    except httpx.RequestError as e:
+        die(f"network error: {e}")
+
+    if args.json:
+        print(json.dumps(results, indent=2))
+
+
+def _summarize_result(obj):
+    t = obj.get("type")
+    if t == "test":
+        exp = obj.get("expected_label")
+        pred = obj.get("predicted_label")
+        mark = "ok " if exp == pred else "MISS"
+        conf = obj.get("confidence")
+        text = (obj.get("content_text") or "")[:50]
+        return f"[{mark}] expected={exp} predicted={pred} conf={conf}  {text}"
+    if t == "error":
+        return f"[ERR ] sample={obj.get('sample_id')} {obj.get('error')}"
+    if t == "summary":
+        return (
+            "\n--- summary ---\n"
+            f"samples: {obj.get('num_samples', 0)}  "
+            f"scored: {obj.get('num_scored', 0)}  "
+            f"errored: {obj.get('num_errored', 0)}\n"
+            f"precision: {obj.get('precision', 0):.3f}  "
+            f"recall: {obj.get('recall', 0):.3f}  "
+            f"f1: {obj.get('f1', 0):.3f}  "
+            f"accuracy: {obj.get('accuracy', 0):.3f}\n"
+            f"tp={obj.get('tp', 0)} fp={obj.get('fp', 0)} "
+            f"tn={obj.get('tn', 0)} fn={obj.get('fn', 0)}"
+        )
+    if t == "done":
+        return None
+    return json.dumps(obj)
+
+
+# Optimizer effort tiers, matching the names and behavior shown in the web UI.
+# The value is the optimizer's effort budget in seconds (max_time_seconds), an
+# approximate runtime, not a wall-clock guarantee:
+#   basic (120s, ~2 min):  reformat your labeling criteria.
+#   pro   (600s, ~10 min): tune to fit your tests.
+#   guru  (1800s, ~30 min): deeply tune with analysis.
+OPTIMIZER_TIERS = {"basic": 120, "pro": 600, "guru": 1800}
+
+
+def cmd_optimize_start(args):
+    key = require_key(args)
+    body = {"max_time_seconds": OPTIMIZER_TIERS[args.tier], "version_id": args.version}
+    handle_response(
+        request("POST", f"/v1/labelers/{args.labeler_id}/optimize", key, json_body=body),
+        args.json,
+    )
+
+
+def cmd_optimize_status(args):
+    key = require_key(args)
+    handle_response(
+        request("GET", f"/v1/labelers/{args.labeler_id}/optimize/{args.job_id}", key),
+        args.json,
+    )
+
+
+def cmd_optimize_discard(args):
+    key = require_key(args)
+    handle_response(
+        request("POST", f"/v1/labelers/{args.labeler_id}/optimize/{args.job_id}/discard", key),
+        args.json,
+    )
+
+
+def cmd_fork(args):
+    key = require_key(args)
+    body = {"version_id": args.version, "clone_test_samples": args.clone_tests}
+    if args.name is not None:
+        body["name"] = args.name
+    if args.visibility is not None:
+        body["visibility"] = args.visibility
+    handle_response(
+        request("POST", f"/v1/labelers/{args.labeler_id}/fork", key, json_body=body),
+        args.json,
+    )
+
+
+def cmd_star(args):
+    key = require_key(args)
+    if args.status:
+        handle_response(request("GET", f"/v1/labelers/{args.labeler_id}/star", key), args.json)
+    else:
+        handle_response(request("POST", f"/v1/labelers/{args.labeler_id}/star", key), args.json)
+
+
+def cmd_check(args):
+    """Spot-check a labeler against ad-hoc content via the /v1 build API."""
+    key = require_key(args)
+    if not args.text and not args.image and not args.video:
+        die("provide --text, --image, or --video to spot-check.")
+    body = {}
+    if args.text is not None:
+        body["content_text"] = args.text
+    try:
+        if args.image is not None:
+            body["content_image"] = _media_to_data_url(args.image, "image")
+        if args.video is not None:
+            body["content_video"] = _media_to_data_url(args.video, "video")
+    except ValueError as e:
+        die(str(e))
+    params = {}
+    if args.version is not None:
+        params["version_id"] = args.version
+    resp = request(
+        "POST",
+        f"/v1/labelers/{args.labeler_id}/check",
+        key,
+        json_body=body,
+        params=params,
+    )
+    data = parse_or_die(resp)
+    if data is _NON_JSON:
+        print(resp.text)
+        return
+    # `check` returns `predicted_label`; rename it to `label` so the field
+    # matches what `run` returns and callers don't have to special-case it.
+    if isinstance(data, dict) and "predicted_label" in data and "label" not in data:
+        data = {
+            ("label" if k == "predicted_label" else k): v for k, v in data.items()
+        }
+    emit(data, args.json)
+
+
+def _retry_after_seconds(resp):
+    """Parse a numeric Retry-After header into seconds, or return None."""
+    val = resp.headers.get("Retry-After")
+    if not val:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def _label_one(c, url, headers, body, max_retries):
+    """POST one item to /v1/label, retrying transient failures.
+
+    Retries on 429, 5xx, and network errors with exponential backoff (honoring a
+    numeric Retry-After when present). Returns ``("result", data)`` on success or
+    ``("error", message)`` on a 4xx or once retries are exhausted.
+    """
+    delay = 1.0
+    for attempt in range(max_retries + 1):
+        try:
+            resp = c.post(url, headers=headers, json=body)
+        except httpx.RequestError as e:
+            if attempt < max_retries:
+                time.sleep(delay)
+                delay = min(delay * 2, 30.0)
+                continue
+            return ("error", f"network error: {e}")
+        if resp.status_code == 429 or resp.status_code >= 500:
+            if attempt < max_retries:
+                time.sleep(_retry_after_seconds(resp) or delay)
+                delay = min(delay * 2, 30.0)
+                continue
+            return (
+                "error",
+                f"request failed ({resp.status_code}) after {max_retries} retries",
+            )
+        if resp.status_code >= 400:
+            body_err = _loads_lenient(resp.text)
+            detail = (
+                body_err.get("detail", resp.text)
+                if isinstance(body_err, dict)
+                else resp.text
+            )
+            return ("error", f"request failed ({resp.status_code}): {detail}")
+        data = _loads_lenient(resp.text)
+        if data is _NON_JSON:
+            return ("error", "non-JSON response from server")
+        return ("result", data)
+    # Defensive: the loop always runs at least once (max_retries is clamped to
+    # >= 0), but never let this return None and crash the worker unpack.
+    return ("error", "no request attempted")
+
+
+def _normalize_batch_item(d):
+    """Pull content fields from one batch row (a JSONL object or a CSV dict).
+
+    Accepts both short keys (text/image/video/id) and the CSV column names used
+    by `tests import` (content_text/content_image_url/content_video_url/
+    sample_id). Returns None when the row has no content at all.
+    """
+    def pick(*keys):
+        for k in keys:
+            v = d.get(k)
+            if v is not None and str(v).strip():
+                return str(v).strip()
+        return None
+
+    text = pick("text", "content_text")
+    image = pick("image", "content_image", "content_image_url", "image_url")
+    video = pick("video", "content_video", "content_video_url", "video_url")
+    sid = pick("id", "sample_id")
+    if not (text or image or video):
+        return None
+    return {"id": sid, "text": text, "image": image, "video": video}
+
+
+def _read_batch_items(path):
+    """Read batch items from a .csv file or a JSONL file (one object per line)."""
+    if not os.path.isfile(path):
+        die(f"batch file not found: {path}")
+    items = []
+    if path.lower().endswith(".csv"):
+        try:
+            with open(path, newline="", encoding="utf-8-sig") as f:
+                rows = list(csv.DictReader(f))
+        except UnicodeDecodeError:
+            die("batch CSV must be UTF-8 encoded.")
+        except OSError as e:
+            die(f"could not read {path}: {e}")
+        for row in rows:
+            item = _normalize_batch_item(row)
+            if item is not None:
+                items.append(item)
+    else:
+        try:
+            with open(path, encoding="utf-8-sig") as f:
+                for n, line in enumerate(f, start=1):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    obj = _loads_lenient(line)
+                    if not isinstance(obj, dict):
+                        die(f"{path} line {n}: each line must be a JSON object.")
+                    item = _normalize_batch_item(obj)
+                    if item is None:
+                        die(f"{path} line {n}: needs text, image, or video.")
+                    items.append(item)
+        except OSError as e:
+            die(f"could not read {path}: {e}")
+    if not items:
+        die(f"no usable rows found in {path}.")
+    return items
+
+
+def _run_batch(args, key, base_body):
+    """Label every row of args.batch in parallel against /v1/label.
+
+    Emits one JSON object per input line (in input order) to stdout, each with
+    the item's `index`, its `id` (if any), and either a `result` or an `error`.
+    Failures don't stop the run; a summary goes to stderr and the exit code is 1
+    if any item failed.
+    """
+    items = _read_batch_items(args.batch)
+    concurrency = max(1, min(args.concurrency, RUN_BATCH_MAX_CONCURRENCY))
+    max_retries = max(0, args.max_retries)
+    url = f"{run_api_base()}/v1/label"
+    headers = auth_headers(key)
+    results = [None] * len(items)
+
+    def work(idx, item, c):
+        out = {"index": idx, "id": item.get("id")}
+        body = dict(base_body)
+        if item.get("text"):
+            body["content_text"] = item["text"]
+        try:
+            if item.get("image"):
+                body["content_image"] = _media_to_data_url(item["image"], "image")
+            if item.get("video"):
+                body["content_video"] = _media_to_data_url(item["video"], "video")
+        except ValueError as e:
+            out["error"] = str(e)
+            return idx, out
+        kind, payload = _label_one(c, url, headers, body, max_retries)
+        out["result" if kind == "result" else "error"] = payload
+        return idx, out
+
+    with client() as c:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as ex:
+            futures = [ex.submit(work, i, it, c) for i, it in enumerate(items)]
+            for fut in concurrent.futures.as_completed(futures):
+                idx, out = fut.result()
+                results[idx] = out
+
+    succeeded = sum(1 for r in results if "result" in r)
+    failed = len(results) - succeeded
+    for r in results:
+        print(json.dumps(r))
+    print(
+        f"batch complete: {succeeded} succeeded, {failed} failed "
+        f"(of {len(results)}).",
+        file=sys.stderr,
+    )
+    if failed:
+        sys.exit(1)
+
+
+def cmd_label(args):
+    """Single-shot or batch labeling via the inference API (api.zentropi.ai)."""
+    key = require_key(args)
+    if args.criteria is not None and args.labeler_id is not None:
+        die("provide either a labeler_id or --criteria for ad-hoc labeling, not both.")
+    if args.criteria is None and args.labeler_id is None:
+        die("provide a labeler_id, or --criteria to label against ad-hoc policy text.")
+    if args.criteria is not None and args.version is not None:
+        die("--version cannot be combined with --criteria (ad-hoc labeling has no versions).")
+
+    # The policy half of the request body is shared by every item.
+    base_body = {"model": args.model}
+    if args.criteria is not None:
+        base_body["criteria_text"] = args.criteria
+    else:
+        base_body["labeler_id"] = args.labeler_id
+        if args.version is not None:
+            base_body["labeler_version_id"] = args.version
+
+    if getattr(args, "batch", None):
+        if args.text or args.image or args.video:
+            die("--batch can't be combined with --text/--image/--video; put content in the file.")
+        _run_batch(args, key, base_body)
+        return
+
+    if not args.text and not args.image and not args.video:
+        die("provide --text, --image, or --video (single-shot inference needs content).")
+    body = dict(base_body)
+    if args.text is not None:
+        body["content_text"] = args.text
+    try:
+        if args.image is not None:
+            body["content_image"] = _media_to_data_url(args.image, "image")
+        if args.video is not None:
+            body["content_video"] = _media_to_data_url(args.video, "video")
+    except ValueError as e:
+        die(str(e))
+    url = f"{run_api_base()}/v1/label"
+    try:
+        with client() as c:
+            resp = c.post(url, headers=auth_headers(key), json=body)
+    except httpx.RequestError as e:
+        die(f"network error: {e}")
+    # `run` is for machines; always emit JSON regardless of the --json flag.
+    handle_response(resp, True)
+
+
+# ----------------------------------------------------------------------------
+# Argument parsing
+# ----------------------------------------------------------------------------
+
+def build_parser():
+    _version = __version__
+    p = argparse.ArgumentParser(prog="zentropi-labeler", description="Zentropi public API CLI")
+    p.add_argument("--version", action="version", version=f"%(prog)s {_version}")
+    p.add_argument("--json", action="store_true", help="Output raw JSON.")
+    p.add_argument("--api-key", help="Override the API key for this invocation.")
+    sub = p.add_subparsers(dest="command", required=True)
+
+    # login / logout
+    sp = sub.add_parser(
+        "login",
+        help="Store an API key. Omit the key to be prompted securely (recommended).",
+    )
+    sp.add_argument(
+        "key",
+        nargs="?",
+        default=None,
+        help="A zt_ API key. Omit to enter it via a hidden prompt (avoids shell history).",
+    )
+    sp.set_defaults(func=cmd_login)
+
+    sp = sub.add_parser("logout", help="Remove the stored API key.")
+    sp.set_defaults(func=cmd_logout)
+
+    # account
+    sp = sub.add_parser("account", help="Show account info.")
+    sp.set_defaults(func=cmd_account)
+
+    # labeler lifecycle (top-level; the binary is the noun)
+    s = sub.add_parser("list", help="List your labelers.")
+    s.add_argument("--skip", type=int, default=0)
+    s.add_argument("--limit", type=int, default=100)
+    s.set_defaults(func=cmd_labelers_list)
+
+    s = sub.add_parser("get", help="Get a labeler.")
+    s.add_argument("id")
+    s.set_defaults(func=cmd_labelers_get)
+
+    s = sub.add_parser("create", help="Create a labeler.")
+    s.add_argument("--name")
+    s.add_argument("--description")
+    s.add_argument("--criteria", help="Draft criteria text.")
+    s.add_argument("--visibility", choices=["public", "private"])
+    s.set_defaults(func=cmd_labelers_create)
+
+    s = sub.add_parser("update", help="Update a labeler.")
+    s.add_argument("id")
+    s.add_argument("--name")
+    s.add_argument("--description")
+    s.add_argument("--criteria", help="Draft criteria text.")
+    s.add_argument("--visibility", choices=["public", "private"])
+    s.set_defaults(func=cmd_labelers_update)
+
+    s = sub.add_parser("delete", help="Delete a labeler.")
+    s.add_argument("id")
+    s.set_defaults(func=cmd_labelers_delete)
+
+    # versions
+    sp = sub.add_parser("versions", help="Manage labeler versions.")
+    vsub = sp.add_subparsers(dest="subcommand", required=True)
+
+    s = vsub.add_parser("list", help="List versions.")
+    s.add_argument("labeler_id")
+    s.set_defaults(func=cmd_versions_list)
+
+    s = vsub.add_parser("get", help="Get a version.")
+    s.add_argument("labeler_id")
+    s.add_argument("version_id")
+    s.set_defaults(func=cmd_versions_get)
+
+    s = vsub.add_parser(
+        "create",
+        help="Snapshot a new version (does not deploy; use 'deploy'). "
+        "Uses --criteria if given, otherwise the current draft.",
+    )
+    s.add_argument("labeler_id")
+    s.add_argument(
+        "--criteria",
+        help="Version criteria text. Omit to snapshot the current draft.",
+    )
+    s.add_argument("--version-name", dest="version_name")
+    s.add_argument("--description")
+    s.set_defaults(func=cmd_versions_create)
+
+    s = vsub.add_parser("delete", help="Delete a version.")
+    s.add_argument("labeler_id")
+    s.add_argument("version_id")
+    s.set_defaults(func=cmd_versions_delete)
+
+    # tests
+    sp = sub.add_parser("tests", help="Manage test samples (datasets).")
+    tsub = sp.add_subparsers(dest="subcommand", required=True)
+
+    s = tsub.add_parser("list", help="List test samples.")
+    s.add_argument("labeler_id")
+    s.set_defaults(func=cmd_tests_list)
+
+    s = tsub.add_parser("get", help="Get a test sample.")
+    s.add_argument("labeler_id")
+    s.add_argument("test_id")
+    s.set_defaults(func=cmd_tests_get)
+
+    s = tsub.add_parser("create", help="Create test samples.")
+    s.add_argument("labeler_id")
+    g = s.add_mutually_exclusive_group(required=True)
+    g.add_argument("--file", help="JSON file with an array of samples.")
+    g.add_argument("--text", help="Single sample content_text.")
+    s.add_argument("--label", default="1", choices=["0", "1"], help="expected_label for --text.")
+    s.set_defaults(func=cmd_tests_create)
+
+    s = tsub.add_parser(
+        "import",
+        help=(
+            "Bulk-import test samples from a CSV (mirrors the web upload). "
+            "Media columns accept http(s) URLs or local file paths."
+        ),
+    )
+    s.add_argument("labeler_id")
+    s.add_argument(
+        "--csv",
+        required=True,
+        help=(
+            "CSV file. Columns: content_text, content_image_url, "
+            "content_video_url, expected_label (required), sample_id."
+        ),
+    )
+    s.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        help="Validate the CSV and report counts without downloading or uploading.",
+    )
+    s.set_defaults(func=cmd_tests_import)
+
+    s = tsub.add_parser("delete", help="Delete a test sample.")
+    s.add_argument("labeler_id")
+    s.add_argument("test_id")
+    s.set_defaults(func=cmd_tests_delete)
+
+    s = tsub.add_parser("delete-all", help="Delete all test samples.")
+    s.add_argument("labeler_id")
+    s.set_defaults(func=cmd_tests_delete_all)
+
+    # benchmark
+    sp = sub.add_parser("benchmark", help="Benchmark a labeler against its stored test samples (build/test; uses /v1, rate-limited).")
+    sp.add_argument("labeler_id")
+    sp.add_argument("--version", help="Version id, 'draft', or 'latest'. Defaults to your draft (or latest deployed).")
+    sp.set_defaults(func=cmd_benchmark)
+
+    # optimize
+    sp = sub.add_parser("optimize", help="Run / inspect optimization jobs.")
+    osub = sp.add_subparsers(dest="subcommand", required=True)
+
+    s = osub.add_parser("start", help="Start an optimization job.")
+    s.add_argument("labeler_id")
+    s.add_argument(
+        "--tier",
+        choices=["basic", "pro", "guru"],
+        default="pro",
+        help=(
+            "Optimizer effort (default: pro). "
+            "basic = reformat your labeling criteria (~2 min); "
+            "pro = tune to fit your tests (~10 min); "
+            "guru = deeply tune with analysis (~30 min). Requires a subscription."
+        ),
+    )
+    s.add_argument("--version", default="draft", help="Version id, 'draft', or 'latest'.")
+    s.set_defaults(func=cmd_optimize_start)
+
+    s = osub.add_parser("status", help="Get optimization job status.")
+    s.add_argument("labeler_id")
+    s.add_argument("job_id", nargs="?", default="latest")
+    s.set_defaults(func=cmd_optimize_status)
+
+    s = osub.add_parser("discard", help="Discard an optimization job.")
+    s.add_argument("labeler_id")
+    s.add_argument("job_id")
+    s.set_defaults(func=cmd_optimize_discard)
+
+    # fork
+    sp = sub.add_parser("fork", help="Fork/remix a labeler.")
+    sp.add_argument("labeler_id")
+    sp.add_argument("--name")
+    sp.add_argument("--version", default="latest", help="Version id, 'draft', or 'latest'.")
+    sp.add_argument("--visibility", choices=["public", "private"])
+    sp.add_argument("--clone-tests", dest="clone_tests", action="store_true")
+    sp.set_defaults(func=cmd_fork)
+
+    # star
+    sp = sub.add_parser("star", help="Star/unstar a labeler (or check status).")
+    sp.add_argument("labeler_id")
+    sp.add_argument("--status", action="store_true", help="Show status instead of toggling.")
+    sp.set_defaults(func=cmd_star)
+
+    # check (single-shot spot check, build-time, via /v1)
+    sp = sub.add_parser("check", help="Spot-check a labeler on ad-hoc content without saving it (build/test; uses /v1, rate-limited).")
+    sp.add_argument("labeler_id")
+    sp.add_argument("--text", help="Content text to spot-check.")
+    sp.add_argument("--image", dest="image", help="Image to spot-check: a data URL, remote URL, or local file path.")
+    sp.add_argument("--image-url", dest="image", help=argparse.SUPPRESS)
+    sp.add_argument("--video", dest="video", help="Video to spot-check: a data URL, remote URL, or local file path.")
+    sp.add_argument("--video-url", dest="video", help=argparse.SUPPRESS)
+    sp.add_argument("--version", help="Version id, 'draft', or 'latest'. Defaults to your draft (or latest deployed).")
+    sp.set_defaults(func=cmd_check)
+
+    # run (single-shot inference)
+    sp = sub.add_parser("run", help="Run a labeler on live content you supply (uses the inference API at api.zentropi.ai — use this for production volume).")
+    sp.add_argument("labeler_id", nargs="?", default=None, help="Labeler to run. Omit and pass --criteria to label against ad-hoc policy text instead.")
+    sp.add_argument("--criteria", help="Ad-hoc policy text to label against, instead of a labeler_id. No labeler needed; nothing is saved.")
+    sp.add_argument("--text", help="Content text to label.")
+    sp.add_argument("--image", dest="image", help="Image to label: a data URL, remote URL, or local file path.")
+    sp.add_argument("--image-url", dest="image", help=argparse.SUPPRESS)
+    sp.add_argument("--video", dest="video", help="Video to label: a data URL, remote URL, or local file path.")
+    sp.add_argument("--video-url", dest="video", help=argparse.SUPPRESS)
+    sp.add_argument("--version", help="labeler_version_id, or 'latest'. Defaults to 'latest' (deployed).")
+    sp.add_argument("--model", default="cope-latest")
+    sp.add_argument(
+        "--batch",
+        help="Path to a JSONL or CSV file of items to label in parallel. Each row "
+        "supplies content (text/image/video). Output is JSONL: one result per "
+        "input line, in order. Can't be combined with --text/--image/--video.",
+    )
+    sp.add_argument(
+        "--concurrency",
+        type=int,
+        default=RUN_BATCH_DEFAULT_CONCURRENCY,
+        help=f"Parallel requests for --batch (default {RUN_BATCH_DEFAULT_CONCURRENCY}, "
+        f"max {RUN_BATCH_MAX_CONCURRENCY}).",
+    )
+    sp.add_argument(
+        "--max-retries",
+        type=int,
+        default=RUN_BATCH_MAX_RETRIES,
+        dest="max_retries",
+        help=f"Retries per item on 429/5xx/network errors for --batch "
+        f"(default {RUN_BATCH_MAX_RETRIES}).",
+    )
+    sp.set_defaults(func=cmd_label)
+
+    # deploy / undeploy (make a version live for production `run`)
+    sp = sub.add_parser(
+        "deploy",
+        help="Make a labeler live for production. Deploys the current draft, or --version <id>.",
+    )
+    sp.add_argument("labeler_id")
+    sp.add_argument(
+        "--version",
+        help="Deploy this existing version id instead of snapshotting the draft.",
+    )
+    sp.set_defaults(func=cmd_deploy)
+
+    sp = sub.add_parser(
+        "undeploy",
+        help="Take a labeler offline. Undeploys all deployed versions, or --version <id>.",
+    )
+    sp.add_argument("labeler_id")
+    sp.add_argument(
+        "--version",
+        help="Undeploy this specific version id instead of the live one(s).",
+    )
+    sp.set_defaults(func=cmd_undeploy)
+
+    return p
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

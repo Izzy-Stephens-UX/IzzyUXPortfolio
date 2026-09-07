@@ -1,0 +1,987 @@
+<!DOCTYPE html><html lang="en"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MERIDIAN — A Text Adventure</title><style>@font-face{font-family:VT323;font-style:normal;font-weight:400;font-display:swap;src:url('data:font/woff2;base64,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') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}*,::after,::before{margin:0;padding:0;box-sizing:border-box}:root{--green:#39ff6e;--green-dim:#1c7a3a;--green-bright:#aaffe0;--green-input:#eaffea;--green-glow:rgba(57, 255, 110, 0.55);--green-halo:rgba(57, 255, 110, 0.18);--green-ghost:rgba(57, 255, 110, 0.04);--red-dim:#cc3333;--surface:#050b06;--border:rgba(57, 255, 110, 0.22);--border-bright:rgba(57, 255, 110, 0.45)}body,html{width:100%;height:100%;background:#000200;display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:VT323,monospace}.terminal{position:relative;width:min(900px,100vw);height:100vh;background:var(--surface);display:flex;flex-direction:column;border-radius:14px;border-left:1px solid var(--border);border-right:1px solid var(--border);box-shadow:0 0 60px rgba(57,255,110,.18),0 0 180px rgba(57,255,110,.07),inset 0 0 80px rgba(0,0,0,.85),inset 0 0 14px rgba(57,255,110,.06);animation:7s infinite flicker;overflow:hidden}.terminal::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.18) 2px,rgba(0,0,0,.18) 3px);pointer-events:none;z-index:20;border-radius:inherit}.terminal::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent 50%,rgba(0,0,0,.85) 100%),radial-gradient(ellipse at 50% 50%,transparent 80%,var(--green-ghost) 100%);pointer-events:none;z-index:21;border-radius:inherit}.scanbar{position:absolute;left:0;right:0;top:0;height:10px;background:linear-gradient(to bottom,transparent,rgba(170,255,224,.18) 50%,transparent);pointer-events:none;z-index:22;filter:blur(1px);animation:9s infinite scanglitch}@keyframes scanglitch{0%{transform:translateY(-12vh);opacity:.4}6%{transform:translateY(8vh);opacity:.7}9%{transform:translateY(8vh);opacity:.15}11%{transform:translateY(24vh);opacity:.85}19%{transform:translateY(28vh);opacity:.6}20%{transform:translateY(28vh);opacity:0}23%{transform:translateY(46vh);opacity:.9}34%{transform:translateY(50vh);opacity:.7}36%{transform:translateY(50vh);opacity:.95}41%{transform:translateY(57vh);opacity:.3}47%{transform:translateY(63vh);opacity:.8}56%{transform:translateY(72vh);opacity:.6}63%{transform:translateY(74vh);opacity:.4}65%{transform:translateY(86vh);opacity:.9}78%{transform:translateY(91vh);opacity:.65}88%{transform:translateY(98vh);opacity:.5}93%{transform:translateY(102vh);opacity:.3}100%{transform:translateY(115vh);opacity:0}}.tear{position:absolute;left:0;right:0;height:2px;background:rgba(170,255,224,.55);pointer-events:none;z-index:23;filter:blur(.5px);opacity:0;animation:13s infinite tearflash}@keyframes tearflash{0%,100%,21%{opacity:0;transform:translateY(20vh)}22%{opacity:.9;transform:translateY(58vh)}22.5%,47%{opacity:0;transform:translateY(58vh)}47.6%{opacity:.7;transform:translateY(33vh)}48%,73%{opacity:0;transform:translateY(33vh)}73.4%{opacity:.85;transform:translateY(78vh)}74%{opacity:0;transform:translateY(78vh)}}.titlebar{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:12px 32px 10px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.35);z-index:5}.titlebar-name{color:var(--green-dim);font-size:19px;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 0 8px var(--green-halo)}.titlebar-status{color:var(--green-dim);font-size:18px;letter-spacing:.06em;text-shadow:0 0 8px var(--green-halo)}#output{flex:1;overflow-y:auto;padding:28px 40px 12px;line-height:1.7;font-size:24px;color:var(--green);scrollbar-width:thin;scrollbar-color:var(--green-dim) transparent;text-shadow:0 0 1px currentColor,0 0 6px var(--green-glow),0 0 18px var(--green-halo)}#output::-webkit-scrollbar{width:4px}#output::-webkit-scrollbar-thumb{background:var(--green-dim);border-radius:2px}.t-title{color:var(--green-bright);font-size:27px;letter-spacing:.18em;text-transform:uppercase;margin-top:10px;text-shadow:0 0 2px var(--green-bright),0 0 10px rgba(170,255,224,.7),0 0 24px rgba(170,255,224,.35)}.t-rule{color:var(--green-dim);user-select:none;text-shadow:0 0 6px var(--green-halo)}.t-desc{color:var(--green);margin-bottom:4px}.t-system{color:var(--green-dim);font-size:21px;margin-bottom:2px}.t-input{color:var(--green-bright);font-size:24px;margin-top:12px;margin-bottom:2px;text-shadow:0 0 2px var(--green-bright),0 0 8px rgba(170,255,224,.6)}.t-error{color:var(--red-dim)}.t-spacer{height:8px}.t-ending-good{color:#6fc;text-shadow:0 0 8px rgba(102,255,204,.5)}.t-ending-boring{color:#8aaa8a;text-shadow:0 0 6px rgba(138,170,138,.4)}.t-ending-dark{color:#f76;text-shadow:0 0 8px rgba(255,119,102,.5)}.help-block{margin:12px 0;padding:18px 22px;border:1px solid var(--border-bright);background:var(--green-ghost);border-radius:4px;box-shadow:inset 0 0 24px var(--green-ghost)}.help-block .h-title{color:var(--green-bright);font-size:24px;letter-spacing:.2em;text-shadow:0 0 8px rgba(170,255,224,.6);margin-bottom:4px}.help-block .h-rule{color:var(--green-dim);margin-bottom:14px;letter-spacing:-.05em}.help-block .h-section{color:var(--green-bright);font-size:19px;letter-spacing:.16em;margin-top:16px;margin-bottom:8px;text-shadow:0 0 6px rgba(170,255,224,.4)}.help-block .h-section:first-of-type{margin-top:4px}.help-block .h-row{display:flex;gap:18px;font-size:21px;line-height:1.5;padding:1px 0 1px 14px}.help-block .h-cmd{color:var(--green-bright);flex-shrink:0;min-width:220px;text-shadow:0 0 4px rgba(170,255,224,.45)}.help-block .h-desc{color:var(--green);flex:1}.input-row{flex-shrink:0;display:flex;align-items:center;gap:12px;padding:14px 36px 22px;border-top:2px solid var(--border-bright);background:rgba(0,0,0,.62);z-index:5;box-shadow:0 -8px 24px rgba(57,255,110,.05)}.prompt{color:var(--green);font-size:26px;user-select:none;flex-shrink:0;text-shadow:0 0 2px var(--green),0 0 10px var(--green-glow)}#cmd{flex:1;background:rgba(57,255,110,.06);border:1px solid rgba(57,255,110,.28);border-radius:4px;outline:0;font-family:VT323,monospace;font-size:24px;color:var(--green-input);caret-color:var(--green-bright);padding:6px 12px;text-shadow:0 0 2px var(--green-input),0 0 10px rgba(234,255,234,.7);transition:border-color .2s,background .2s}#cmd:focus{border-color:rgba(57,255,110,.55);background:rgba(57,255,110,.1);box-shadow:0 0 0 1px rgba(57,255,110,.15),inset 0 0 12px rgba(57,255,110,.06)}#cmd::placeholder{color:var(--green-dim);opacity:.5}.help-hint{font-size:18px;color:var(--green-dim);letter-spacing:.04em;flex-shrink:0;text-shadow:0 0 6px var(--green-halo)}@keyframes flicker{0%,100%,19%,38%,5%,63%,85%,94%{opacity:1}4%{opacity:.92}18%{opacity:.96}37%{opacity:.88}62%{opacity:.94}84%{opacity:.9}93%{opacity:.85}}</style><div class="terminal"><div class="scanbar"></div><div class="tear"></div><div class="titlebar"><span class="titlebar-name">MERIDIAN ASSOCIATES — TERMINAL v4.1</span> <span class="titlebar-status">9:04 AM</span></div><div id="output" role="log" aria-live="polite"></div><div class="input-row"><span class="prompt">&gt;</span> <input id="cmd" autocomplete="off" spellcheck="false" placeholder="type a command..." aria-label="Command input"> <span class="help-hint">HELP for commands</span></div></div><script>'use strict';
+
+let G = freshState();
+
+function freshState() {
+  return {
+    room: 'lobby',
+    inventory: [],
+    visited: new Set(),
+    flags: {
+      tookKeycard: false, readTaskCard: false, spokeToMara: false,
+      spokeToJonah: false, foundDoor: false, enteredSurveillance: false,
+      readProtocol: false, photographed: false, greyTriggered: false,
+    }
+  };
+}
+
+const WORLD = {
+
+  lobby: {
+    name: 'LOBBY — MERIDIAN ASSOCIATES',
+    firstLook: `The lobby is grey marble and cold light, the specific quiet of a place built to make you feel smaller than you are.
+
+Behind the reception desk, a woman named Dorothy is typing, and she hasn't looked up since you walked in. On the wall above her, a grey circle logo with no text inside it, just the shape.
+
+The clock reads 9:04 AM, but you know it's later than that.
+
+Your name badge says PERMANENT, which is strange because you never told anyone your name.
+
+The office is north.`,
+    shortLook: `Lobby. Dorothy at the desk, the clock stuck at 9:04. The office is north.`,
+    exits: { north: 'desk', up: 'desk', office: 'desk' },
+    examine: {
+      clock: `9:04 AM, and the second hand isn't moving. You check your phone, but the screen is dark and the button does nothing.`,
+      badge: `PERMANENT. Not Temporary, not your name, just PERMANENT. The laminate is warm, like it was printed seconds before you walked in.`,
+      dorothy: `Dorothy. Her typing has a rhythm that doesn't correspond to any language you know, and she's smiling at the monitor instead of at you.`,
+      receptionist() { return WORLD.lobby.examine.dorothy; },
+      logo: `A grey circle with no text and no detail. Whatever it meant once, it's been reduced to a shape.`,
+      phone: `On the desk. The cord runs behind it and disappears, and there's no wall socket you can see anywhere.`,
+      flowers: `White flowers with no smell. You press one petal and it gives like fabric, but it looks real.`,
+      'name badge': `PERMANENT. Still.`,
+      elevator: `Brushed steel with no floor numbers, just one button that isn't labeled.`,
+      desk: `Reception, with a vase of white flowers, the phone, and a small placard that reads PRECISION. PERFORMANCE. PROGRESS.`,
+      sign: `MERIDIAN ASSOCIATES — PRECISION. PERFORMANCE. PROGRESS.
+
+Below it, in smaller text: Efficiency Is Our Middle Name.`,
+    },
+    talk: {
+      dorothy: `"Good morning," you say.
+
+Dorothy smiles at the monitor. "You'll want to go up. Fourteenth floor. They're expecting you."
+
+A pause. "We're always expecting the new ones."
+
+She doesn't stop typing.`,
+    }
+  },
+
+  desk: {
+    name: 'YOUR DESK — FOURTEENTH FLOOR',
+    firstLook: () => {
+      let base = `The elevator opens onto silence, not quiet but actual silence, the kind that takes effort to maintain. Forty people typing in time, no one talking, no phones ringing.
+
+Your desk is by the window, with a laminated task card, a pen in a cup, and a monitor that's already on showing a spreadsheet you don't recognize.
+
+The clock reads 9:04 AM.`;
+      if (!G.flags.tookKeycard) {
+        base += `\n\nYour leather notebook sits on the desk, and it feels heavier than it should.`;
+      }
+      base += `\n\nNorth: the floor. West: break room. East: filing cabinets.`;
+      return base;
+    },
+    shortLook: () => {
+      let base = `Your desk, with the clock at 9:04.`;
+      if (!G.flags.tookKeycard) base += ` Your notebook sits open.`;
+      base += `\nNorth: floor. West: break room. East: cabinets.`;
+      return base;
+    },
+    exits: {
+      south: 'lobby', lobby: 'lobby',
+      north: 'floor', floor: 'floor', office: 'floor',
+      west: 'breakroom', 'break room': 'breakroom', breakroom: 'breakroom',
+      east: 'cabinet', cabinets: 'cabinet', 'filing cabinets': 'cabinet', cabinet: 'cabinet',
+      alignment: '_boring', hale: '_boring', 'dr hale': '_boring',
+      'alignment session': '_boring', "hale's office": '_boring', session: '_boring',
+    },
+    examine: {
+      'task card': () => { G.flags.readTaskCard = true; return taskCardText(); },
+      'laminated card': () => { G.flags.readTaskCard = true; return taskCardText(); },
+      card: () => { G.flags.readTaskCard = true; return taskCardText(); },
+      notebook: () => {
+        if (!G.flags.tookKeycard) {
+          return `Your leather notebook, with career goals on the first page in your own handwriting. There's a sticky note on the inside cover that you didn't write:
+
+  "Don't use the elevator.  — J.H."
+
+You don't know any J.H.
+
+And in the spine, a small grey keycard slipped there with care, which you also didn't put there.
+
+Type TAKE KEYCARD.`;
+        }
+        return `Your notebook, the sticky note still tucked inside, the spine now empty.`;
+      },
+      'sticky note': `"Don't use the elevator.  — J.H."
+
+J.H. None of the names you've heard today match those initials.`,
+      keycard: () => {
+        if (!G.flags.tookKeycard) return `A grey card in the spine of your notebook, completely unmarked. Type TAKE KEYCARD.`;
+        return `Grey, small, blank on both sides.`;
+      },
+      monitor: `A spreadsheet with headers that don't quite resolve into words your eyes can hold, but one column is clear: COMPLIANCE INDEX. The numbers are all rising.`,
+      clock: `9:04 AM. It hasn't moved since you sat down.`,
+      window: `The city, fourteen floors below, with people moving like they have somewhere to be. You used to feel that way, even this morning.`,
+      pen: `One pen in the cup, with six more identical ones in the drawer. You brought your own, but they aren't here anymore.`,
+      colleagues: `Forty desks and forty people, all typing in time. No one looks up, and the rhythm becomes hypnotic if you let it be.`,
+    },
+    take: {
+      keycard: () => {
+        if (G.flags.tookKeycard) return `You already have it.`;
+        G.flags.tookKeycard = true;
+        G.inventory.push('grey keycard');
+        return `You slide the keycard out of the notebook spine, and it's lighter than you expected, with both faces completely blank. You put it in your pocket.`;
+      },
+      notebook: `It's yours.`,
+      card: `The card is taped to the desk, so you leave it.`,
+    },
+    talk: {
+      mara: `Mara works behind you, but she doesn't look up when you say her name. After a moment, quietly: "Keep your head down today. It gets easier."
+
+She doesn't say easier than what.`,
+      jonah: `Jonah types for a beat after you say his name, then slides a sticky note to the edge of your desk without looking at you.
+
+DON'T ASK ABOUT THE PHONES. — JR
+
+He goes back to typing.`,
+    }
+  },
+
+  floor: {
+    name: 'MAIN FLOOR — FOURTEENTH FLOOR',
+    firstLook: `Forty desks and forty people. The fluorescent above row D has been flickering since you got here, but no one has reported it.
+
+Mara Ellison works in the row behind yours, and she caught your eye when you arrived before looking away.
+
+Jonah Reyes is to your right, the one who passed you the sticky note about the phones.
+
+There's a phone on every desk, and not one of them has rung.
+
+South: your desk. West: break room. East: cabinets.`,
+    shortLook: `Main floor. Forty desks, with Mara behind you and Jonah to your right.
+South: desk. West: break room. East: cabinets.`,
+    exits: {
+      south: 'desk', desk: 'desk',
+      west: 'breakroom', 'break room': 'breakroom', breakroom: 'breakroom',
+      east: 'cabinet', cabinets: 'cabinet', cabinet: 'cabinet',
+      alignment: '_boring', hale: '_boring', session: '_boring',
+    },
+    examine: {
+      mara: `Sharp cheekbones and dark eyes that take everything in and give nothing back. She's wearing navy, pressed, with a small tension in her jaw when she catches you looking.`,
+      jonah: `To your right. His monitor is angled enough that you can read it from where you're standing.
+
+  COMPLIANCE INDEX: 94.7
+
+You know what that means now.`,
+      'sticky note': `DON'T ASK ABOUT THE PHONES. — JR
+
+You pick up the receiver on the empty desk next to you, and the dial tone is long and flat. You put it back.`,
+      'bulletin board': `EMPLOYEE OF THE MONTH. The photo slot is blacked out with thick marker, completely covered.
+
+Below it, in smaller text: "47 Years Running."`,
+      bulletin() { return WORLD.floor.examine['bulletin board']; },
+      phones: `Forty-three phones, and not one has rung. You pick up a receiver, get the dial tone, and put it back. Jonah types a little faster.`,
+      lights: `The fluorescent above row D. Flicker, pause, flicker-flicker. Same pattern for two hours, and you've started hearing music in it.`,
+      clock: `Six clocks on the walls, all reading 9:04 AM, and none of them are moving.`,
+      'mr grey': `You don't see him, but the silence near the private offices has a particular quality.`,
+      grey: `You don't see him, but the silence near the private offices has a particular quality.`,
+      hale: `Dr. Rowan Hale works in the glass-walled office next to Mr. Grey's, sitting very still and reading something. Your alignment session is at 10:00 AM.`,
+    },
+    talk: {
+      mara: () => {
+        G.flags.spokeToMara = true;
+        return `Mara leans forward slightly. "You're doing fine," she says, with a warmth that's either real or practiced and you can't tell which.
+
+"Follow the card. Don't ask about the phones. Don't use the elevator after four."
+
+She glances at her monitor, and something tightens in her face. "Just keep your head down for now."`;
+      },
+      jonah: () => {
+        G.flags.spokeToJonah = true;
+        return `Jonah finishes a sentence on his keyboard before answering.
+
+"You get used to it," he says, and he means the quiet and the cards and the clocks, the way you'd describe weather.
+
+"The clocks bother everyone at first. Then they don't."
+
+Something in his voice sounds less like reassurance and more like a warning dressed up as one.`;
+      },
+    }
+  },
+
+  breakroom: {
+    name: 'BREAK ROOM',
+    firstLook: `The break room smells like burnt coffee and something underneath the coffee, something chemical and almost antiseptic.
+
+A coffee machine, a fridge, a microwave, and a table with four chairs arranged in perfect alignment. No one is in here.
+
+East: the floor.`,
+    shortLook: `Break room with coffee, a fridge, a microwave. Empty. East: floor.`,
+    exits: {
+      east: 'floor', back: 'floor', out: 'floor', floor: 'floor',
+      south: 'desk', desk: 'desk',
+    },
+    examine: {
+      fridge: `Four identical lunches in identical containers, and one older thing pushed to the back in a brown paper bag:
+
+  GREG — DO NOT EAT
+
+Date written in pencil: 1987.
+
+You close the fridge.`,
+      lunch: `GREG — DO NOT EAT, dated 1987. The bag should have disintegrated by now, but it hasn't.`,
+      microwave: `The display reads 88:88. You press a button and it stays at 88:88. You open the door, close it, and it still says 88:88. You step back.`,
+      coffee: `Always hot. The carafe has been full since you got here, and you drink it slowly because thinking about when it was made is worse than not.`,
+      'coffee machine': `The button reads FRESH BREW, but the carafe was already full when you got there.`,
+      smell: `Coffee, yes, and underneath it antiseptic, the smell of a room cleaned with something strong. You breathe out.`,
+      chairs: `Four chairs, precisely arranged, and none of them are at the angle they'd be at if anyone had ever sat in them.`,
+      table: `Spotless, and not in the wiped-clean way but in the never-used way.`,
+      clock: `9:04 AM.`,
+    },
+    talk: {
+      priya: `Priya comes in while you're at the machine, and she's smiling before she's fully turned to face you.
+
+"The alignment sessions are wonderful," she says, without you asking. "Very clarifying."
+
+She fills a glass of water and leaves.`,
+    }
+  },
+
+  cabinet: {
+    name: 'FILING CABINET WALL',
+    firstLook: () => {
+      let base = `A long wall of grey filing cabinets, rows A through G.
+
+Etta Morales works at the nearest desk and doesn't look up. Her palms are flat on cabinet row C, and she's breathing slowly, counting maybe.`;
+      if (!G.flags.foundDoor) {
+        base += `\n\nBetween rows D and E, one cabinet sits slightly out from the wall, and there's a gap. In the gap, you can see the outline of a door, with a magnetic panel at shoulder height and no handle.`;
+      } else {
+        base += `\n\nThe hidden door is between rows D and E, with the panel at shoulder height.`;
+      }
+      base += `\n\nWest: the floor.`;
+      return base;
+    },
+    shortLook: () => {
+      let base = `Filing cabinets, rows A through G.`;
+      if (G.flags.foundDoor) base += ` The hidden door is between D and E.`;
+      base += `\nWest: floor.`;
+      return base;
+    },
+    exits: {
+      west: 'floor', back: 'floor', floor: 'floor',
+      south: 'desk', desk: 'desk',
+    },
+    examine: {
+      etta: `You watch her for a second and look away. You recognize what she's doing because you've done it, so you give her that.`,
+      cabinets: `Rows A through G. You pull row C, the Q4 reports the task card mentioned, and the headers are in a typeface your eyes can't quite hold. You file what you're supposed to file.`,
+      gap: () => {
+        G.flags.foundDoor = true;
+        return `You squeeze into the gap between rows D and E, and the wall behind is painted to match exactly, seamless if you don't know what you're looking for.
+
+But there's a seam, a door-shaped outline running floor to ceiling, and at shoulder height a small magnetic panel with no handle and no markings.
+
+${G.flags.tookKeycard ? 'Type USE KEYCARD.' : "You'd need something to open it."}`;
+      },
+      door: () => {
+        G.flags.foundDoor = true;
+        return `A door-shaped outline with a magnetic panel at shoulder height.
+
+${G.flags.tookKeycard ? 'You have the keycard. Type USE KEYCARD.' : "You'd need something to open it."}`;
+      },
+      panel: () => {
+        G.flags.foundDoor = true;
+        return `A small magnetic panel, flush with the wall.
+
+${G.flags.tookKeycard ? 'You have the keycard. Type USE KEYCARD.' : ''}`;
+      },
+    },
+    use: {
+      keycard: () => {
+        if (!G.flags.tookKeycard) return `You don't have a keycard.`;
+        G.flags.foundDoor = true;
+        return '__ENTER_SURVEILLANCE__';
+      },
+    },
+    talk: {
+      etta: `Some kinds of holding-yourself-together don't need an audience, and you know that.`,
+    }
+  },
+
+  surveillance: {
+    name: 'SURVEILLANCE ROOM',
+    firstLook: `A narrow corridor with blue-white light, and then a room.
+
+It hums, low, and you feel it in your teeth.
+
+Monitors floor to ceiling, with forty feeds covering every corner of the fourteenth floor, and your desk is monitor seven, empty.
+
+Every timestamp reads 9:04 AM.
+
+Filing cabinets line the left wall, unlocked, and the bottom drawer of the nearest one has been left ajar.
+
+The hidden door is behind you.`,
+    shortLook: () => {
+      let base = `Surveillance room, with monitors everywhere and the hum.`;
+      if (G.flags.readProtocol) base += ` You know what you know.`;
+      base += `\nThe door is behind you.`;
+      return base;
+    },
+    exits: {
+      back: 'cabinet', west: 'cabinet', out: 'cabinet',
+      alignment: '_boring', hale: '_boring', session: '_boring', 'dr hale': '_boring',
+    },
+    examine: {
+      monitors: () => {
+        if (G.flags.readProtocol && !G.flags.greyTriggered) {
+          G.flags.greyTriggered = true;
+          return '__TRIGGER_DARK__';
+        }
+        if (G.flags.readProtocol) return `You've already looked, and you don't need to look again.`;
+        return `Forty-three desks, the break room with the carafe still full, the lobby, and the corridor you just came through.
+
+Monitor seven shows your desk, empty.
+
+And then you notice a monitor showing this room, live, with you in it, looking at yourself looking.
+
+Timestamp: 9:04 AM.`;
+      },
+      files: () => {
+        if (G.flags.readProtocol) return `You've been through them, and you know what's there.`;
+        return `Personnel files, one per employee, with photographs and psychological profiles that include family history and points of leverage.
+
+Each file has a chart labeled COMPLIANCE INDEX, tracked to three decimals.
+
+Your file was started the day of your interview.
+
+  COMPLIANCE INDEX: insufficient — monitoring elevated.
+
+A drawer at the bottom of the cabinet has been left ajar, and inside there's a document with a red stamp:
+
+  MERIDIAN PROTOCOL SEVEN.
+
+Type READ PROTOCOL SEVEN.`;
+      },
+      cabinet: () => {
+        if (G.flags.readProtocol) return `You've seen what's in them.`;
+        return `Unlocked, with the bottom drawer ajar. There's a document inside stamped MERIDIAN PROTOCOL SEVEN.\n\nType READ PROTOCOL SEVEN.`;
+      },
+      drawer: () => {
+        if (G.flags.readProtocol) return `Empty now, the document already photographed.`;
+        return `MERIDIAN PROTOCOL SEVEN, stamped in red. Type READ PROTOCOL SEVEN.`;
+      },
+      'protocol seven': () => protocolSevenText(),
+      protocol: () => protocolSevenText(),
+      'compliance index': `Yours: insufficient — monitoring elevated. Mara: 79.2. Jonah: 94.7. Priya: 98.1. You don't know yet what happens at 100.`,
+      personnel: `Mara Ellison, Jonah Reyes, Linh Park, Callum Price, Priya Anand, Etta Morales, Naomi Osei. Whole lives reduced to a profile and a number that keeps going up.`,
+    },
+    take: {
+      evidence: () => photographEvidence(),
+      'protocol seven': () => photographEvidence(),
+      photos: () => photographEvidence(),
+      document: () => photographEvidence(),
+    },
+    use: {
+      phone: () => photographEvidence(),
+      camera: () => photographEvidence(),
+    },
+  },
+
+  ending_good: {
+    name: 'ENDING ONE — THE WHISTLEBLOWER',
+    isEnding: true,
+    endingClass: 't-ending-good',
+    endingText: `You take the stairs, not the elevator, because you remember the note. J.H., whoever they were, left it for someone, and maybe that someone was you.
+
+The lobby. Dorothy doesn't look up. The grey circle watches you go.
+
+Outside is morning, and the air smells like itself.
+
+You find a bench two blocks away and sit down, and you breathe for forty-five minutes.
+
+
+That afternoon, in a public library, on a computer that isn't yours, you send everything: the photographs, Protocol Seven page by page, the compliance charts, and your own file.
+
+You send it to a journalist whose work you've followed for years, and to a labor rights attorney who specializes in cases like this.
+
+That evening, in a cheap hotel under a friend's name, you open your notebook and write down every name you can remember.
+
+Mara Ellison. Jonah Reyes. Etta Morales. Linh Park. Callum Price. Priya Anand. Naomi Osei.
+
+They are not just evidence.
+
+
+The story breaks Thursday morning. Three regulatory bodies open investigations by noon, and by evening Mr. Grey hasn't been seen in the building.
+
+Within days, employees begin emerging from the conditioning, slowly, like people waking from a sleep they didn't know they were having.
+
+Jonah Reyes gives a brief interview, and he says he always knew something was wrong but couldn't find the will to act.
+
+Mara Ellison doesn't speak to the press. Months later, she sends you a message, brief and carefully worded: "I'm finding my footing again."
+
+You write back one line: "Take your time."
+
+
+Three months later, you start a new job at a small co-op. The office is loud, nothing is synchronized, and the clocks all show different times because no one fixed them after the last power outage.
+
+You find it almost unbearably alive.
+
+You still carry the notebook, and when something is wrong, you write it down and act on it, because the cost of not doing that is too vivid to forget.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ENDING: THE WHISTLEBLOWER
+  You got out. You brought them with you.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ Type RESTART to begin again. ]`
+  },
+
+  ending_boring: {
+    name: 'ENDING TWO — THE ASSIMILATION',
+    isEnding: true,
+    endingClass: 't-ending-boring',
+    endingText: `Dr. Rowan Hale's office has glass walls, and the chair across from the desk is very comfortable, which you hadn't expected.
+
+Hale is calm and warm in the way of someone who has spent years making troubling things sound sensible.
+
+They ask about your goals, your stress, your desire to be seen and respected and understood.
+
+You've been awake for thirty-six hours, and the weight of what you know has gotten heavy, so you answer honestly.
+
+At the end, Hale says quietly: "You've been working very hard, Alex. You can let some of that go."
+
+
+That evening, on the bus home, you look at the photographs of Protocol Seven on your phone.
+
+You think: they seem fine. They seem okay. Priya seems happy. Maybe the routine isn't a cage but a relief, the relief of not having to fight so hard all the time.
+
+You put the phone away, and you don't write anything in your notebook that night.
+
+
+Weeks pass, and then more.
+
+You start to understand the rhythms not as sinister but as elegant: the synchronized movement, the quiet, the frozen clocks. There's something almost meditative about it.
+
+You attend a second alignment session without being asked, and Hale greets you with a small, satisfied smile.
+
+
+One morning, a new employee arrives, with wide eyes and a leather notebook tucked under her arm. Mr. Grey assigns you to orient her.
+
+You show her to her desk, hand her a laminated card, and smile in a way that's warm and practiced and doesn't reach anywhere.
+
+She asks if the clocks are always stopped.
+
+"You get used to it," you say. "That's the thing. You just get used to it."
+
+It comes out smoothly, in exactly the tone Jonah Reyes used with you.
+
+You don't notice the echo.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ENDING: THE ASSIMILATION
+  The machine keeps running.
+  You keep it running.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ Type RESTART to begin again. ]`
+  },
+
+  ending_dark: {
+    name: 'ENDING THREE — THE CAPTURE',
+    isEnding: true,
+    endingClass: 't-ending-dark',
+    endingText: `The door opens.
+
+You watch it on monitor eleven, the corridor feed, where a figure in charcoal grey is taking measured steps.
+
+You turn around before he's fully through.
+
+Mr. Grey closes the door behind him with the precision of someone who has done this before.
+
+"I've known about your curiosity," he says, "since before you were hired."
+
+His voice is flat and even, the way you'd describe weather, and he looks at your phone before he looks at you.
+
+"Your psychological profile flagged you. High autonomy, high perceptiveness, and we knew you'd find the room."
+
+A pause.
+
+"The keycard was placed in your notebook by Callum Price, who has been watching you since your first morning."
+
+He tells you that you have a choice between a senior position with expanded responsibilities, or the emergency compliance protocol.
+
+You look at his face, the pale eyes, the single mechanical smile, and you understand that the choice is not real.
+
+You refuse anyway.
+
+He nods once, as though this was predicted, and reaches into his jacket pocket.
+
+
+What he removes is a small remote device, matte grey, with one button.
+
+You lunge for the door.
+
+There is a high, clean tone that doesn't come from outside but from somewhere inside your own skull, and then a sensation like a wave moving through your thoughts, smoothing them flat the way a hand smooths a wrinkled sheet.
+
+Your legs stop moving.
+
+You stand very still in the center of the room, and the last coherent thoughts arrange themselves with terrible clarity before they go:
+
+  The leather notebook.
+  The corkboard with career goals.
+  J.H., don't use the elevator.
+  Etta Morales pressing her palms flat.
+  Jonah's voice: you get used to it.
+
+Mr. Grey takes the phone from your hand, straightens your collar, and says, "There. Much better."
+
+He opens the door.
+
+
+Four months later, your compliance index reads OPTIMAL.
+
+You arrive at the same time each morning, complete the laminated cards, attend alignment sessions as scheduled, and return home to an apartment that grows tidier and emptier and quieter.
+
+You do not think about Protocol Seven.
+
+The last image is you on the bus, headphones in, watching the city pass. Where the first morning's you was restless and full of potential, this you watches the city like it's scenery and nothing more.
+
+The bus stops, and you walk toward the building with the grey circle.
+
+The clocks will always read 9:04 AM...
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ENDING: THE CAPTURE
+  The machine continues.
+  There will be other Alexes.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ Type RESTART to begin again. ]`
+  },
+
+};
+
+function taskCardText() {
+  return `MERIDIAN ASSOCIATES — DAILY TASK CARD
+────────────────────────────────────
+1. File Q4 reports (cabinet row C)
+2. Cross-reference client indices
+3. Attend alignment session — 10:00 AM, Dr. Hale
+4. Do not use the elevator after 4 PM.
+────────────────────────────────────
+
+The fourth item is not a task.`;
+}
+
+function protocolSevenText() {
+  if (G.flags.readProtocol) return `You know what it says, every word of it.`;
+  G.flags.readProtocol = true;
+  return `MERIDIAN PROTOCOL SEVEN — CLASSIFIED
+ARCHITECT: DR. ROWAN HALE
+AUTHORIZED: MERIDIAN PARENT ORG.
+
+You read it with shaking hands.
+
+An experimental behavioral conditioning program, running since Q3, with three components:
+
+  SUBLIMINAL AUDIO embedded in the ventilation, with frequencies that suppress autonomous decision-making.
+
+  CHEMICAL AGENTS dispersed through air filtration, which explains the smell and the coffee always being hot.
+
+  ALIGNMENT SESSIONS conducted by Dr. Rowan Hale, using targeted neurological stimulation that reinforces voluntary compliance until it becomes involuntary.
+
+The clocks are frozen at 9:04 AM by design, because without time passing, subjects can't track exposure or count the days.
+
+There's an appendix with subjects flagged for elevated monitoring, and your name is first.
+
+  HIGH-AUTONOMY SUBJECT — ACCELERATED CONDITIONING AUTHORIZED.
+
+You put the document down.
+
+You have a choice, and you're running out of time.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PHOTOGRAPH EVIDENCE — gather proof
+  GO ALIGNMENT SESSION — attend
+  EXAMINE MONITORS — keep looking
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+}
+
+function photographEvidence() {
+  if (!G.flags.readProtocol) return `There's nothing here you need to photograph yet.`;
+  if (G.flags.photographed) return `You have what you need.`;
+  G.flags.photographed = true;
+  return `You photograph every page of Protocol Seven, the compliance charts, your file, and the files of every name you can remember.
+
+Your hands are steady, and you have proof.
+
+The hidden door is behind you. Type GO STAIRS or GO EXIT.`;
+}
+
+function resolve(v) { return typeof v === 'function' ? v() : v; }
+
+const out = document.getElementById('output');
+let typingLocked = false;
+const typeQueue = [];
+
+function addLine(cls, text) {
+  const el = document.createElement('div');
+  el.className = cls;
+  el.textContent = text;
+  out.appendChild(el);
+  scrollBottom();
+}
+
+let _scrollPending = false;
+function scrollBottom() {
+  if (_scrollPending) return;
+  _scrollPending = true;
+  requestAnimationFrame(() => { out.scrollTop = out.scrollHeight; _scrollPending = false; });
+}
+
+function enqueueTyped(text, cls = 't-desc', delay = 0) {
+  typeQueue.push({ text, cls, delay });
+  if (!typingLocked) drainQueue();
+}
+
+function drainQueue() {
+  if (typeQueue.length === 0) { typingLocked = false; return; }
+  typingLocked = true;
+  const { text, cls, delay } = typeQueue.shift();
+  setTimeout(() => typeText(text, cls, drainQueue), delay);
+}
+
+function typeText(text, cls, onDone) {
+  const el = document.createElement('div');
+  el.className = cls;
+  el.style.marginBottom = '2px';
+  out.appendChild(el);
+  const chars = [...text];
+  let i = 0;
+  function tick() {
+    if (i >= chars.length) {
+      scrollBottom();
+      if (onDone) onDone();
+      return;
+    }
+    el.textContent += chars[i];
+    i++;
+    scrollBottom();
+    const ch = chars[i - 1];
+    let delay = 12;
+    if (ch === '\n') delay = 70;
+    else if (ch === '.' || ch === '!' || ch === '?') delay = 55;
+    else if (ch === ',') delay = 28;
+    else delay = 9 + Math.random() * 7;
+    setTimeout(tick, delay);
+  }
+  tick();
+}
+
+function spacer() { addLine('t-spacer', ''); }
+function rule(char = '────────────────────────────────────────') { addLine('t-rule', char); }
+
+// Render help as a structured HTML block (instant, not typed)
+function showHelp() {
+  const block = document.createElement('div');
+  block.className = 'help-block';
+  block.innerHTML = `
+    <div class="h-title">COMMANDS</div>
+    <div class="h-rule">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+
+    <div class="h-section">MOVEMENT</div>
+    <div class="h-row"><span class="h-cmd">go [place]</span><span class="h-desc">move somewhere</span></div>
+    <div class="h-row"><span class="h-cmd">north / south / east / west</span><span class="h-desc">bare directions also work</span></div>
+
+    <div class="h-section">LOOKING</div>
+    <div class="h-row"><span class="h-cmd">look / l</span><span class="h-desc">describe where you are</span></div>
+    <div class="h-row"><span class="h-cmd">examine [thing] / x</span><span class="h-desc">inspect something closely</span></div>
+    <div class="h-row"><span class="h-cmd">read [thing]</span><span class="h-desc">same as examine</span></div>
+
+    <div class="h-section">INTERACTING</div>
+    <div class="h-row"><span class="h-cmd">take [item]</span><span class="h-desc">pick something up</span></div>
+    <div class="h-row"><span class="h-cmd">use [item]</span><span class="h-desc">use an item</span></div>
+    <div class="h-row"><span class="h-cmd">talk [person]</span><span class="h-desc">speak to someone</span></div>
+    <div class="h-row"><span class="h-cmd">photograph</span><span class="h-desc">photograph evidence</span></div>
+
+    <div class="h-section">UTILITY</div>
+    <div class="h-row"><span class="h-cmd">inventory / i</span><span class="h-desc">what you're carrying</span></div>
+    <div class="h-row"><span class="h-cmd">help / ?</span><span class="h-desc">this menu</span></div>
+    <div class="h-row"><span class="h-cmd">restart</span><span class="h-desc">start over</span></div>
+  `;
+  out.appendChild(block);
+  scrollBottom();
+}
+
+function describeRoom(id) {
+  const room = WORLD[id];
+  spacer();
+  addLine('t-title', room.name);
+  rule();
+  const firstVisit = !G.visited.has(id);
+  G.visited.add(id);
+  let text;
+  if (firstVisit && room.firstLook) {
+    text = resolve(room.firstLook);
+  } else if (room.shortLook) {
+    text = resolve(room.shortLook);
+  } else {
+    text = resolve(room.firstLook);
+  }
+  enqueueTyped(text, 't-desc');
+}
+
+function showEnding(id) {
+  const room = WORLD[id];
+  spacer();
+  addLine('t-title', room.name);
+  rule('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  setTimeout(() => enqueueTyped(room.endingText, room.endingClass || 't-desc'), 600);
+}
+
+function parse(raw) {
+  const input = raw.trim();
+  if (!input) return;
+  addLine('t-input', '> ' + input);
+
+  const room = WORLD[G.room];
+  if (room && room.isEnding) {
+    if (input.toLowerCase() === 'restart') { resetGame(); return; }
+    enqueueTyped(`The story is over.\nType RESTART to begin again.`, 't-system');
+    return;
+  }
+
+  const cmd = input.toLowerCase().replace(/[^a-z0-9\s']/g, '').trim();
+  const words = cmd.split(/\s+/);
+  const verb = words[0];
+  const rest = words.slice(1).join(' ');
+
+  if (cmd === 'restart') { resetGame(); return; }
+
+  if (cmd === 'help' || cmd === '?') { showHelp(); return; }
+
+  if (cmd === 'look' || cmd === 'l' || cmd === 'look around') { describeRoom(G.room); return; }
+
+  if (cmd === 'inventory' || cmd === 'i' || cmd === 'items' || cmd === 'bag') {
+    enqueueTyped(
+      G.inventory.length === 0
+        ? `You're carrying nothing of note.`
+        : `You're carrying:\n  ${G.inventory.join('\n  ')}`,
+      't-system'
+    );
+    return;
+  }
+
+  if (verb === 'photograph' || verb === 'photo' || verb === 'snap') {
+    if (G.room === 'surveillance' && G.flags.readProtocol) enqueueTyped(photographEvidence(), 't-desc');
+    else enqueueTyped(`There's nothing here you need to photograph yet.`, 't-desc');
+    return;
+  }
+
+  if (verb === 'read' || verb === 'open') { doExamine(rest); return; }
+
+  if (verb === 'examine' || verb === 'x' || (verb === 'look' && words[1] === 'at')) {
+    const target = verb === 'look' ? words.slice(2).join(' ') : rest;
+    doExamine(target);
+    return;
+  }
+
+  if (verb === 'take' || verb === 'get' || (verb === 'pick' && words[1] === 'up')) {
+    const target = verb === 'pick' ? words.slice(2).join(' ') : rest;
+    doTake(target);
+    return;
+  }
+
+  if (verb === 'use' || verb === 'swipe' || verb === 'press' || verb === 'apply') {
+    doUse(rest);
+    return;
+  }
+
+  if (verb === 'talk' || verb === 'speak' || verb === 'ask' || verb === 'greet') {
+    const target = rest.replace(/^(to|with)\s+/, '');
+    doTalk(target);
+    return;
+  }
+
+  if (verb === 'go' || verb === 'move' || verb === 'walk' || verb === 'head' || verb === 'enter') {
+    const target = rest.replace(/^(to|the|into|through|down|up)\s+/, '');
+    doGo(target);
+    return;
+  }
+
+  const bareExits = ['north','south','east','west','up','down'];
+  if (bareExits.includes(cmd)) { doGo(cmd); return; }
+  if (WORLD[G.room]?.exits?.[cmd]) { doGo(cmd); return; }
+
+  const examined = tryExamine(cmd);
+  if (examined) { handleExamineResult(examined); return; }
+
+  enqueueTyped(`Not sure what you mean. Try LOOK, GO [place], EXAMINE [thing], or HELP.`, 't-system');
+}
+
+function doExamine(target) {
+  if (!target) { describeRoom(G.room); return; }
+  const result = tryExamine(target);
+  if (result !== null) handleExamineResult(result);
+  else enqueueTyped(`You look at the ${target}, and nothing more reveals itself.`, 't-desc');
+}
+
+function tryExamine(target) {
+  const room = WORLD[G.room];
+  if (!room || !room.examine) return null;
+  const ex = room.examine;
+  if (ex[target] !== undefined) {
+    return resolve(ex[target]);
+  }
+  for (const key of Object.keys(ex)) {
+    if (target.includes(key) || key.includes(target)) {
+      return resolve(ex[key]);
+    }
+  }
+  return null;
+}
+
+function handleExamineResult(result) {
+  if (result === '__TRIGGER_DARK__') { triggerDark(); return; }
+  enqueueTyped(result, 't-desc');
+}
+
+function doTake(target) {
+  const room = WORLD[G.room];
+  if (!room || !room.take) { enqueueTyped(`You can't take that.`, 't-desc'); return; }
+  const tk = room.take;
+  let result = null;
+  if (tk[target] !== undefined) {
+    result = resolve(tk[target]);
+  } else {
+    for (const key of Object.keys(tk)) {
+      if (target.includes(key) || key.includes(target)) {
+        result = resolve(tk[key]);
+        break;
+      }
+    }
+  }
+  if (result !== null) enqueueTyped(result, 't-desc');
+  else enqueueTyped(`You can't take that.`, 't-desc');
+}
+
+function doUse(target) {
+  const stripped = target.replace(/\s+on\s+.*$/, '').trim();
+  if ((stripped.includes('keycard') || stripped.includes('card')) && G.room === 'cabinet') {
+    if (!G.flags.tookKeycard) { enqueueTyped(`You don't have a keycard.`, 't-desc'); return; }
+    enterSurveillance();
+    return;
+  }
+  const room = WORLD[G.room];
+  const us = room?.use || {};
+  let result = null;
+  for (const key of [target, stripped]) {
+    if (us[key] !== undefined) {
+      result = resolve(us[key]);
+      break;
+    }
+  }
+  if (result === null) {
+    for (const key of Object.keys(us)) {
+      if (target.includes(key) || key.includes(target)) {
+        result = resolve(us[key]);
+        break;
+      }
+    }
+  }
+  if (result === '__ENTER_SURVEILLANCE__') { enterSurveillance(); return; }
+  if (result !== null) enqueueTyped(result, 't-desc');
+  else enqueueTyped(`That doesn't seem to do anything.`, 't-desc');
+}
+
+function doTalk(target) {
+  const room = WORLD[G.room];
+  const tk = room?.talk || {};
+  let result = null;
+  if (tk[target] !== undefined) {
+    result = resolve(tk[target]);
+  } else {
+    for (const key of Object.keys(tk)) {
+      if (target.includes(key) || key.includes(target)) {
+        result = resolve(tk[key]);
+        break;
+      }
+    }
+  }
+  if (result !== null) enqueueTyped(result, 't-desc');
+  else enqueueTyped(`There's no one by that name here, or they don't want to talk.`, 't-desc');
+}
+
+function doGo(target) {
+  const alignmentWords = ['alignment', 'hale', 'session', 'consultant'];
+  if (alignmentWords.some(w => target.includes(w))) { goToEnding('ending_boring'); return; }
+
+  const exitWords = ['exit', 'stairs', 'stair', 'leave', 'outside', 'out', 'down', 'elevator'];
+  if (G.room === 'surveillance' && exitWords.some(w => target.includes(w))) {
+    if (G.flags.photographed) { goToEnding('ending_good'); }
+    else if (G.flags.readProtocol) { enqueueTyped(`You need to take the evidence first. Photograph it.`, 't-desc'); }
+    else { doGo('back'); }
+    return;
+  }
+
+  const room = WORLD[G.room];
+  const exits = room?.exits || {};
+  let dest = null;
+  if (exits[target] !== undefined) {
+    dest = resolve(exits[target]);
+  }
+  if (!dest) {
+    for (const key of Object.keys(exits)) {
+      if (target.includes(key) || key.includes(target)) {
+        dest = resolve(exits[key]);
+        break;
+      }
+    }
+  }
+  if (!dest) { enqueueTyped(`You can't go that way.`, 't-desc'); return; }
+  if (dest === '_boring') { goToEnding('ending_boring'); return; }
+  if (!WORLD[dest]) { enqueueTyped(`You can't go that way.`, 't-desc'); return; }
+
+  G.room = dest;
+  describeRoom(dest);
+}
+
+function enterSurveillance() {
+  G.flags.foundDoor = true;
+  enqueueTyped(`You press the keycard against the panel, and after a soft click and a pressurized hiss, the wall opens.`, 't-desc');
+  setTimeout(() => {
+    G.room = 'surveillance';
+    G.flags.enteredSurveillance = true;
+    describeRoom('surveillance');
+  }, 2400);
+}
+
+function triggerDark() {
+  enqueueTyped(`You stare into the monitors, and on monitor twelve, the corridor outside this room, there's a figure moving toward the door.\n\nYou turn around.`, 't-desc');
+  setTimeout(() => goToEnding('ending_dark'), 5200);
+}
+
+function goToEnding(id) {
+  G.room = id;
+  showEnding(id);
+}
+
+function resetGame() {
+  G = freshState();
+  out.innerHTML = '';
+  startGame();
+}
+
+function startGame() {
+  addLine('t-title', 'M E R I D I A N');
+  rule('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  enqueueTyped(`A text adventure with three endings.\n\nYou are Alex, and it's your first day. Something is already wrong.\n\nType HELP for commands.`, 't-system', 0);
+  setTimeout(() => describeRoom('lobby'), 2800);
+}
+
+const cmdInput = document.getElementById('cmd');
+
+cmdInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const val = cmdInput.value;
+    cmdInput.value = '';
+    parse(val);
+  }
+});
+
+document.addEventListener('click', () => cmdInput.focus());
+document.addEventListener('keydown', () => cmdInput.focus());
+
+startGame();</script>

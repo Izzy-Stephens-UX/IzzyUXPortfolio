@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "zentropi-labeler": {
+      "source": "zentropi-ai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/zentropi-labeler/SKILL.md",
+      "computedHash": "5dbc6c781bf3fcc4ed668f9707f797d074fca0aec94e8eb2537e46102f20e6f8"
+    }
+  }
+}
