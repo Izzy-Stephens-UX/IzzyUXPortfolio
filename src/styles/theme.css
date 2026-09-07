@@ -28,7 +28,9 @@
   --red-deep:    #2E9478; /* deep teal */
   --gold:        #F8F32B; /* yellow highlight accent */
   --pink:        #DCABDF; /* panel accent 1 */
-  --teal:        #40C9A2; /* panel accent 2 */
+  --teal:        #40C9A2; /* panel accent 2 — for fills, borders, shadows, and text on dark surfaces */
+  --teal-text:   #21735C; /* darkened teal for text on the light --bg surface — #40C9A2 is only 1.85:1
+                              there (fails WCAG AA); this hits ~5.1:1 while staying recognizably teal */
   --yellow:      #F8F32B; /* highlight accent */
 
   /* Default mappings — unchanged, inherit from primitives above */

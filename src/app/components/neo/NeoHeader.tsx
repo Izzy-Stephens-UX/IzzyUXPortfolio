@@ -22,7 +22,7 @@ export default function NeoHeader() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `inline-block font-['Bruno_Ace_SC'] text-[13px] sm:text-[16px] tracking-[0.12em] underline decoration-2 underline-offset-4 text-[var(--ink)] transition-all duration-200 ease-out hover:scale-[1.15] hover:-rotate-2 hover:text-[var(--teal)] hover:underline-offset-[6px] ${
+                `inline-block font-['Bruno_Ace_SC'] text-[13px] sm:text-[16px] tracking-[0.12em] underline decoration-2 underline-offset-4 text-[var(--ink)] transition-all duration-200 ease-out hover:scale-[1.15] hover:-rotate-2 hover:text-[var(--teal-text)] hover:underline-offset-[6px] ${
                   isActive ? 'opacity-100' : 'opacity-75'
                 }`
               }
