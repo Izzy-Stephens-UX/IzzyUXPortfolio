@@ -1,27 +1,23 @@
 @custom-variant dark (&:is(.dark *));
 
-/* ─── Hero atmosphere ──────────────────────────────────────── */
-.hero-bg {
-  background-image:
-    radial-gradient(ellipse at 38% 70%, rgba(123, 79, 212, 0.10) 0%, transparent 55%),
-    radial-gradient(ellipse at 78% 20%, rgba(123, 79, 212, 0.06) 0%, transparent 40%);
-}
-
 :root {
   --font-size: 16px;
 
-  /* Izzy's Portfolio Color System — WRAITH */
-  --bg:          #0A0A0F; /* near-black, slight violet cast (was warm #0d0c0a) */
-  --bg-elevated: #0F0F18; /* elevated surfaces */
-  --bg-card:     #13131F; /* card surfaces */
-  --bg-tinted:   #16152A; /* tinted/highlighted surfaces */
-  --ink:         #E8E4F0; /* cool off-white, violet-tinted (was warm #ece5d3) */
-  --ink-soft:    #9490A8; /* mid-tone with violet cast (was warm #b8b1a3) */
-  --ink-muted:   #5A566B; /* muted text (was warm #6e6a5e) */
-  --line:        #1E1B2E; /* borders & dividers, violet-dark (was warm #2a2622) */
-  --red:         #7B4FD4; /* PRIMARY ACCENT — electric violet (was crimson) */
-  --red-deep:    #4E2FA8; /* deep violet (was deep red) */
-  --gold:        #9D7FE0; /* soft lavender complement (was gold) */
+  /* Izzy's Portfolio Color System — NEUBRUTALIST */
+  --bg:          #FEEEEB; /* cream, global page background */
+  --bg-elevated: #F5E0DB; /* lifted surfaces */
+  --bg-card:     #FFFFFF; /* card surfaces */
+  --bg-tinted:   #DCABDF; /* pink panel surfaces */
+  --ink:         #0C090D; /* near-black, primary text + all hard borders */
+  --ink-soft:    #3A3640; /* secondary text */
+  --ink-muted:   #6B6670; /* tertiary text */
+  --line:        #0C090D; /* borders are solid 2px black, not a hairline */
+  --red:         #40C9A2; /* PRIMARY ACCENT — teal (was violet) */
+  --red-deep:    #2E9478; /* deep teal */
+  --gold:        #F8F32B; /* yellow highlight accent */
+  --pink:        #DCABDF; /* panel accent 1 */
+  --teal:        #40C9A2; /* panel accent 2 */
+  --yellow:      #F8F32B; /* highlight accent */
 
   /* Default mappings — unchanged, inherit from primitives above */
   --background: var(--bg);
@@ -47,7 +43,7 @@
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --ring: var(--red);
-  --radius: 0;
+  --radius: 5px;
 }
 
 .dark {
@@ -135,17 +131,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Source Serif 4', serif;
-    /* WRAITH: violet dot grid + ambient glow layers */
-    background-image:
-      radial-gradient(circle, rgba(123, 79, 212, 0.15) 1px, transparent 1px),
-      radial-gradient(ellipse at top left,     rgba(123, 79, 212, 0.07) 0%, transparent 50%),
-      radial-gradient(ellipse at bottom right, rgba(123, 79, 212, 0.04) 0%, transparent 50%);
-    background-size:
-      18px 18px,
-      100% 100%,
-      100% 100%;
-    background-attachment: fixed;
+    font-family: 'Montserrat', sans-serif;
   }
 
   /**
