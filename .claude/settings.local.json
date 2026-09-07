@@ -20,7 +20,8 @@
       "Bash(curl -sf -o \"C:\\\\Users\\\\ileac\\\\Downloads\\\\PortfolioSiteFigma\\\\src\\\\assets\\\\hero-illustration.png\" \"http://localhost:3845/assets/7812bbd77d40bd73578deb0e9d7cdc8c4c3243e9.png\")",
       "Bash(curl -sf -o \"C:\\\\Users\\\\ileac\\\\Downloads\\\\PortfolioSiteFigma\\\\src\\\\assets\\\\ellipse-dot.svg\" \"http://localhost:3845/assets/5516e835524a9d301cc5f58201400e4c416dbee0.svg\")",
       "Bash(curl -sf -o \"C:\\\\Users\\\\ileac\\\\Downloads\\\\PortfolioSiteFigma\\\\src\\\\assets\\\\zig-zag.svg\" \"http://localhost:3845/assets/52bb154ebeb9ed48b406c2caece9b297ff6165e3.svg\")",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "PowerShell(Get-Process | Where-Object { $_.ProcessName -match 'node|npm|vite|Code|explorer' } | Select-Object Id, ProcessName, Path | Format-Table -AutoSize)"
     ]
   }
 }

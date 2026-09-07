@@ -185,3 +185,9 @@
     line-height: 1.5;
   }
 }
+
+/* Custom cursor — only engaged on devices with a fine, hover-capable pointer */
+.custom-cursor-active,
+.custom-cursor-active * {
+  cursor: none !important;
+}

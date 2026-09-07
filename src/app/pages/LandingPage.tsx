@@ -52,9 +52,9 @@ export default function LandingPage() {
   return (
     <NeoLayout>
       <section className="max-w-[1280px] mx-auto px-6 sm:px-10 pt-10 sm:pt-16">
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row">
           {/* Left panel — name, headline, pitch */}
-          <div className="flex-1 bg-[var(--pink)] border-2 border-[var(--ink)] rounded-[5px] px-6 py-10 sm:px-12 sm:py-14">
+          <div className="flex-1 bg-[var(--pink)] border-2 border-[var(--ink)] rounded-tl-[5px] rounded-tr-[5px] rounded-bl-none rounded-br-none lg:rounded-tr-none lg:rounded-bl-[5px] px-6 py-10 sm:px-12 sm:py-14">
             <div className="flex items-center gap-3 flex-wrap mb-5">
               <span className="font-['Montserrat'] font-medium text-[16px] sm:text-[20px]">Izzy Stephens</span>
               <img src={ellipseDot} alt="" className="w-[6px] h-[6px]" />
@@ -77,7 +77,7 @@ export default function LandingPage() {
           </div>
 
           {/* Right panel — illustration */}
-          <div className="lg:w-[380px] shrink-0 bg-[var(--teal)] border-2 border-[var(--ink)] rounded-[5px] flex items-center justify-center p-10 sm:p-12">
+          <div className="lg:w-[380px] shrink-0 bg-[var(--teal)] border-2 border-[var(--ink)] border-t-0 lg:border-t-2 lg:border-l-0 rounded-tl-none rounded-tr-none rounded-bl-[5px] rounded-br-[5px] lg:rounded-tr-[5px] lg:rounded-bl-none flex items-center justify-center p-10 sm:p-12">
             <img
               src={heroIllustration}
               alt="Illustrated portrait of Izzy Stephens"

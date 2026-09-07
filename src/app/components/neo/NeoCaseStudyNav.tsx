@@ -48,7 +48,7 @@ export default function NeoCaseStudyNav() {
   }, []);
 
   return (
-    <nav className="sticky top-28 w-56 hidden lg:block shrink-0">
+    <nav className="sticky top-28 self-start w-56 hidden lg:block shrink-0">
       <div className="font-['JetBrains_Mono'] uppercase text-[10px] tracking-[0.14em] text-[var(--ink-muted)] mb-4">
         In this case study
       </div>
