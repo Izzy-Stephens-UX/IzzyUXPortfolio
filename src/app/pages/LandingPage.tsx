@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import NeoLayout from '../components/neo/NeoLayout';
 import HighlightWord from '../components/neo/HighlightWord';
 // @ts-expect-error — resolved by the figma-asset-resolver vite plugin
@@ -94,12 +93,9 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-3 gap-8 sm:gap-12">
             {shortVersion.map((item) => (
               <div key={item.label}>
-                <Link
-                  to="/work"
-                  className="block bg-[var(--teal)] text-[var(--ink)] border-2 border-[var(--ink)] rounded-[5px] px-4 py-3 text-center font-['Bruno_Ace_SC'] text-[14px] sm:text-[16px] tracking-[0.1em] underline mb-4 shadow-[4px_4px_0px_0px_var(--pink)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--pink)] transition-all"
-                >
+                <div className="bg-[var(--teal)] text-[var(--ink)] border-2 border-[var(--ink)] rounded-[5px] px-4 py-3 text-center font-['Bruno_Ace_SC'] text-[14px] sm:text-[16px] tracking-[0.1em] underline mb-4 shadow-[4px_4px_0px_0px_var(--pink)]">
                   {item.label}
-                </Link>
+                </div>
                 <p className="font-['Montserrat'] text-[14px] sm:text-[16px] leading-[1.6]">{item.body}</p>
               </div>
             ))}

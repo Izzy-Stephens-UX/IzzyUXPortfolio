@@ -1,5 +1,17 @@
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Tailwind v4 wraps `hover:` in `@media (hover: hover)` by default, to avoid
+ * hover states getting "stuck" after a tap on touchscreens. That media query
+ * reflects the browser's *primary* input though, so on a hybrid device (a
+ * touchscreen laptop with a mouse/trackpad also in use) it can report false
+ * and silently disable every hover: utility on the site even for someone
+ * using a real pointer — the same failure mode as the custom cursor's old
+ * (hover: hover) check. Redefining the variant as a plain &:hover restores
+ * normal hover behavior everywhere.
+ */
+@custom-variant hover (&:hover);
+
 :root {
   --font-size: 16px;
 
